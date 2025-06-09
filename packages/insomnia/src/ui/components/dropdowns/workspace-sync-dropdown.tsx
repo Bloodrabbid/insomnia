@@ -2,13 +2,12 @@ import { type FC } from 'react';
 import React from 'react';
 import { useRouteLoaderData } from 'react-router';
 
-import { isGitProject, isRemoteProject } from '../../../models/project';
+import { isGitProject } from '../../../models/project';
 import { useOrganizationPermissions } from '../../hooks/use-organization-features';
 import { useRootLoaderData } from '../../routes/root';
 import type { WorkspaceLoaderData } from '../../routes/workspace';
 import { GitProjectSyncDropdown } from './git-project-sync-dropdown';
 import { GitSyncDropdown } from './git-sync-dropdown';
-import { SyncDropdown } from './sync-dropdown';
 
 export const WorkspaceSyncDropdown: FC = () => {
   const { activeProject, activeWorkspace, gitRepository, activeWorkspaceMeta } = useRouteLoaderData(
@@ -16,21 +15,12 @@ export const WorkspaceSyncDropdown: FC = () => {
   ) as WorkspaceLoaderData;
 
   const { userSession } = useRootLoaderData();
-
   const { features } = useOrganizationPermissions();
 
-  if (!userSession.id) {
-    return null;
-  }
-
-  const shouldShowCloudSyncDropdown = isRemoteProject(activeProject) && !activeWorkspaceMeta?.gitRepositoryId;
-
-  if (shouldShowCloudSyncDropdown) {
-    return <SyncDropdown key={activeWorkspace?._id} workspace={activeWorkspace} project={activeProject} />;
-  }
-
+  // В локальной версии показываем только Git sync для локальных репозиториев
   const shouldShowGitSyncDropdown =
-    features.gitSync.enabled && (activeWorkspaceMeta?.gitRepositoryId || !isRemoteProject(activeProject));
+    features.gitSync.enabled && activeWorkspaceMeta?.gitRepositoryId;
+    
   if (shouldShowGitSyncDropdown) {
     if (isGitProject(activeProject)) {
       return <GitProjectSyncDropdown key={gitRepository?._id} gitRepository={gitRepository} />;
@@ -40,9 +30,9 @@ export const WorkspaceSyncDropdown: FC = () => {
       return (
         <GitSyncDropdown
           key={gitRepository?._id}
-          isInsomniaSyncEnabled={isRemoteProject(activeProject)}
+          isInsomniaSyncEnabled={false} // Отключаем Insomnia Sync в локальной версии
           gitRepository={gitRepository}
-          showDeprecatedWarning={!isGitProject(activeProject)}
+          showDeprecatedWarning={false} // Убираем предупреждение в локальной версии
         />
       );
     }

@@ -64,35 +64,10 @@ export async function encodeBase64(data: Uint8Array): Promise<string> {
   return dataUri.slice(dataAt + 1);
 }
 
-export async function submitAuthCode(code: string) {
-  try {
-    const rawBox = await decodeBase64(code.trim());
-    const publicKey = await decodeBase64(window.localStorage.getItem('insomnia.publicKey') || '');
-    const secretKey = await decodeBase64(window.localStorage.getItem('insomnia.secretKey') || '');
-    const boxData = open(rawBox, publicKey, secretKey);
-    invariant(boxData, 'Invalid authentication code.');
+export const submitAuthCode = async () => {
+  throw new Error('Authentication disabled in local version');
+};
 
-    const decoder = new TextDecoder();
-    const box: AuthBox = JSON.parse(decoder.decode(boxData));
-    await session.absorbKey(box.token, box.key);
-  } catch (error) {
-    console.error(error);
-    return error;
-  }
-}
-
-export function getLoginUrl() {
-  const publicKey = window.localStorage.getItem('insomnia.publicKey');
-  if (!publicKey) {
-    console.log('[auth] No public key found');
+export const getLoginUrl = () => {
     return '';
-  }
-
-  const url = new URL(getAppWebsiteBaseURL());
-
-  url.pathname = '/app/auth-app/';
-  url.searchParams.set('loginKey', encodeURIComponent(publicKey));
-  url.searchParams.set('source_origin', 'desktop_app');
-
-  return url.toString();
-}
+};

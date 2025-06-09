@@ -24,8 +24,8 @@ export const start = async () => {
   console.log(`[build] npm: ${childProcess.spawnSync('npm', ['--version']).stdout}`.trim());
   console.log(`[build] node: ${childProcess.spawnSync('node', ['--version']).stdout}`.trim());
 
-  if (process.version.indexOf('v22.') !== 0) {
-    console.log('[build] Node 22.x.x is required to build');
+  if (process.version.indexOf('v22.') !== 0 && process.version.indexOf('v23.') !== 0) {
+    console.log('[build] Node 22.x.x or 23.x.x is required to build');
     process.exit(1);
   }
 

@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 
 import { extension as mimeExtension } from 'mime-types';
-import React, { type FC, useCallback, useMemo } from 'react';
-import { Tab, TabList, TabPanel, Tabs, Toolbar } from 'react-aria-components';
+import React, { type FC, useCallback, useMemo, useState } from 'react';
+import { Tab, TabList, TabPanel, Tabs, Toolbar, Button, Input, SearchField } from 'react-aria-components';
 import { useRouteLoaderData } from 'react-router';
 
 import { PREVIEW_MODE_SOURCE } from '../../../common/constants';
@@ -31,6 +31,7 @@ import { BlankPane } from './blank-pane';
 import { Pane, PaneHeader } from './pane';
 import { PlaceholderResponsePane } from './placeholder-response-pane';
 import { RequestTestResultPane } from './request-test-result-pane';
+import { Icon } from '../icon';
 
 interface Props {
   activeRequestId: string;
@@ -41,6 +42,8 @@ export const ResponsePane: FC<Props> = ({ activeRequestId }) => {
   ) as RequestLoaderData;
   const filterHistory = activeRequestMeta.responseFilterHistory || [];
   const filter = activeRequestMeta.responseFilter || '';
+  const [simpleTextSearch, setSimpleTextSearch] = useState('');
+  const [appliedFilter, setAppliedFilter] = useState(''); // Отслеживаем примененный фильтр
   const patchRequestMeta = useRequestMetaPatcher();
   const { settings } = useRootLoaderData();
   const previewMode = activeRequestMeta.previewMode || PREVIEW_MODE_SOURCE;
@@ -62,6 +65,237 @@ export const ResponsePane: FC<Props> = ({ activeRequestId }) => {
     responseFilterHistory.unshift(responseFilter);
     patchRequestMeta(requestId, { responseFilterHistory });
   };
+
+  // Собственная логика поиска, работающая независимо от системы фильтров
+  const searchResponseContent = useCallback((searchText: string) => {
+    if (!searchText.trim() || !activeResponse) {
+      return null;
+    }
+    
+    try {
+      const bodyBuffer = activeResponse.bodyBuffer;
+      if (!bodyBuffer) return null;
+      
+      const bodyText = bodyBuffer.toString('utf8');
+      const searchLower = searchText.toLowerCase();
+      
+      // Если это JSON, попробуем найти в нем
+      if (activeResponse.contentType?.includes('json')) {
+        try {
+          const jsonObj = JSON.parse(bodyText);
+          const foundResults: Array<{path: string, value: any, type: 'key' | 'value', fullObject?: any}> = [];
+          
+          // Рекурсивная функция для поиска в JSON
+          const searchInObject = (obj: any, path = '$', parent?: any): void => {
+            if (obj === null || obj === undefined) {
+              if (String(obj).toLowerCase().includes(searchLower)) {
+                foundResults.push({
+                  path: `${path}`,
+                  value: obj,
+                  type: 'value',
+                  fullObject: parent
+                });
+              }
+              return;
+            }
+            
+            if (typeof obj === 'string' || typeof obj === 'number' || typeof obj === 'boolean') {
+              if (String(obj).toLowerCase().includes(searchLower)) {
+                foundResults.push({
+                  path: `${path}`,
+                  value: obj,
+                  type: 'value',
+                  fullObject: parent
+                });
+              }
+            } else if (Array.isArray(obj)) {
+              obj.forEach((item, index) => {
+                searchInObject(item, `${path}[${index}]`, obj);
+              });
+            } else if (typeof obj === 'object') {
+              Object.keys(obj).forEach(key => {
+                // Проверяем ключ
+                if (key.toLowerCase().includes(searchLower)) {
+                  foundResults.push({
+                    path: `${path}.${key}`,
+                    value: key,
+                    type: 'key',
+                    fullObject: obj
+                  });
+                }
+                // Проверяем значение
+                searchInObject(obj[key], `${path}.${key}`, obj);
+              });
+            }
+          };
+          
+          searchInObject(jsonObj);
+          return foundResults.map(result => ({
+            displayText: result.type === 'key' 
+              ? `${result.path} (ключ)` 
+              : `${result.path} = ${result.value}`,
+            path: result.path,
+            value: result.value,
+            type: result.type,
+            fullObject: result.fullObject
+          }));
+        } catch (e) {
+          // Если не получилось парсить как JSON, ищем в тексте
+        }
+      }
+      
+      // Для всех остальных типов ищем в тексте
+      const lines = bodyText.split('\n');
+      const foundLines: Array<{displayText: string, lineNumber: number, content: string}> = [];
+      
+      lines.forEach((line, index) => {
+        if (line.toLowerCase().includes(searchLower)) {
+          foundLines.push({
+            displayText: `Строка ${index + 1}: ${line.trim()}`,
+            lineNumber: index + 1,
+            content: line.trim()
+          });
+        }
+      });
+      
+      return foundLines.length > 0 ? foundLines : null;
+    } catch (error) {
+      console.error('Ошибка поиска:', error);
+      return null;
+    }
+  }, [activeResponse]);
+
+  // Результаты поиска
+  const searchResults = useMemo(() => {
+    const results = searchResponseContent(simpleTextSearch);
+    console.log('Результаты поиска:', results);
+    return results;
+  }, [searchResponseContent, simpleTextSearch]);
+
+    // Обработчик сброса фильтра
+  const handleResetFilter = useCallback(async () => {
+    console.log('Сброс фильтра');
+    setAppliedFilter('');
+    setSimpleTextSearch('');
+    await handleSetFilter('');
+    
+    // Очищаем поле фильтра в CodeEditor
+    setTimeout(() => {
+      const filterInput = document.querySelector('.editor input[type="text"]') as HTMLInputElement;
+      if (filterInput) {
+        filterInput.value = '';
+        const enterEvent = new KeyboardEvent('keydown', {
+          key: 'Enter',
+          code: 'Enter',
+          bubbles: true,
+          cancelable: true
+        });
+        filterInput.dispatchEvent(enterEvent);
+      }
+    }, 100);
+  }, [handleSetFilter]);
+
+  // Обработчик клика по результату поиска
+  const handleSearchResultClick = useCallback(async (result: any) => {
+    console.log('Клик по результату:', result);
+    
+    // Проверяем, есть ли путь у результата
+    if (!result || !result.path) {
+      console.log('Нет пути в результате, очищаем фильтр');
+      await handleResetFilter();
+      return;
+    }
+    
+    try {
+      let filterPath = result.path;
+      console.log('Исходный путь:', filterPath);
+      
+      // Простая очистка пути
+      if (filterPath.startsWith('$.')) {
+        filterPath = filterPath.substring(2);
+      } else if (filterPath.startsWith('$')) {
+        filterPath = filterPath.substring(1);
+      }
+      
+      console.log('Очищенный путь:', filterPath);
+      
+      let finalFilter = '';
+      let displayText = '';
+      const fullPath = result.path; // Полный путь до найденного элемента
+      
+      // Применяем простые и надежные фильтры
+      if (!filterPath || filterPath === '.' || filterPath === '') {
+        console.log('Показываем корень');
+        finalFilter = '$';
+        displayText = 'Весь ответ';
+      } else {
+        // Показываем полный путь в строке поиска
+        displayText = `Путь: ${fullPath}`;
+        
+        // Всегда показываем родительский объект вместо конкретного поля для контекста
+        const pathParts = filterPath.split('.');
+        console.log('Части пути:', pathParts);
+        
+        if (pathParts.length > 1) {
+          // Убираем последнюю часть пути (название поля) чтобы показать родительский объект
+          const parentPath = pathParts.slice(0, -1).join('.');
+          console.log('Фильтр родительского объекта:', `$.${parentPath}`);
+          finalFilter = `$.${parentPath}`;
+        } else if (pathParts.length === 1) {
+          // Если только один элемент в пути, показываем его
+          console.log('Фильтр прямого пути:', `$.${filterPath}`);
+          finalFilter = `$.${filterPath}`;
+        } else {
+          // Показываем весь корень
+          console.log('Показываем корень как fallback');
+          finalFilter = '$';
+          displayText = 'Весь ответ';
+        }
+      }
+      
+      // Устанавливаем состояние фильтра
+      setAppliedFilter(finalFilter);
+      setSimpleTextSearch(displayText);
+      
+      // Устанавливаем фильтр
+      console.log('Применяем фильтр:', finalFilter);
+      await handleSetFilter(finalFilter);
+      
+      // Даём время для установки фильтра, затем принудительно применяем его
+      // Эмулируем нажатие Enter в поле фильтра CodeEditor
+      setTimeout(() => {
+        // Ищем поле фильтра и программно вызываем событие Enter
+        const filterInput = document.querySelector('.editor input[type="text"]') as HTMLInputElement;
+        if (filterInput) {
+          // Устанавливаем значение в поле фильтра
+          filterInput.value = finalFilter;
+          
+          // Создаём и отправляем событие Enter
+          const enterEvent = new KeyboardEvent('keydown', {
+            key: 'Enter',
+            code: 'Enter',
+            bubbles: true,
+            cancelable: true
+          });
+          
+          console.log('Отправляем Enter событие в поле фильтра');
+          filterInput.dispatchEvent(enterEvent);
+        } else {
+          console.warn('Поле фильтра не найдено');
+        }
+      }, 100);
+      
+    } catch (error) {
+      console.error('Ошибка создания фильтра:', error);
+      await handleResetFilter();
+    }
+  }, [handleSetFilter, handleResetFilter]);
+
+  // Обработчик изменения поискового запроса (НЕ интегрируется с фильтрами)
+  const handleSimpleSearchChange = useCallback((searchText: string) => {
+    setSimpleTextSearch(searchText);
+    // НЕ вызываем handleSetFilter, чтобы избежать ошибок JSONPath
+  }, []);
 
   const { isExecuting, steps } = useExecutionState({ requestId: activeRequest._id });
 
@@ -221,7 +455,7 @@ export const ResponsePane: FC<Props> = ({ activeRequestId }) => {
           </Tab>
         </TabList>
         <TabPanel className="flex w-full flex-1 flex-col overflow-hidden" id="preview">
-          <Toolbar className="flex h-[--line-height-sm] w-full flex-shrink-0 items-center border-b border-solid border-[--hl-md] px-2">
+          <Toolbar className="flex h-[--line-height-sm] w-full flex-shrink-0 items-center border-b border-solid border-[--hl-md] px-2 gap-2">
             <PreviewModeDropdown
               download={handleDownloadResponseBody}
               copyToClipboard={async () => {
@@ -231,6 +465,95 @@ export const ResponsePane: FC<Props> = ({ activeRequestId }) => {
                 }
               }}
             />
+            
+            <div className="flex-1 max-w-md relative">
+              <SearchField
+                aria-label={appliedFilter ? "Примененный фильтр" : "Поиск в ответе"}
+                className="group relative flex w-full"
+                value={simpleTextSearch}
+                onChange={appliedFilter ? undefined : handleSimpleSearchChange}
+              >
+                <Input
+                  placeholder={appliedFilter ? "" : "Поиск в ответе (текст, числа, ключи)..."}
+                  className={`w-full rounded-sm border border-solid py-1 pl-2 text-xs text-[--color-font] transition-colors focus:outline-none focus:ring-1 focus:ring-[--hl-md] ${
+                    appliedFilter 
+                      ? 'pr-16 border-[--color-success] bg-[--color-success-bg] font-medium' 
+                      : 'pr-7 border-[--hl-sm] bg-[--color-bg] placeholder:italic'
+                  }`}
+                  readOnly={!!appliedFilter}
+                />
+                <div className="absolute right-0 top-0 flex h-full items-center px-2 gap-1">
+                  {appliedFilter && (
+                    <Button 
+                      className="flex aspect-square w-4 items-center justify-center rounded-sm text-xs text-[--color-font] ring-1 ring-transparent transition-all hover:bg-[--hl-xs] focus:ring-inset focus:ring-[--hl-md] aria-pressed:bg-[--hl-sm]"
+                      onPress={handleResetFilter}
+                      aria-label="Сбросить фильтр"
+                    >
+                      <Icon icon="times" />
+                    </Button>
+                  )}
+                  {!appliedFilter && simpleTextSearch && (
+                    <Button 
+                      className="flex aspect-square w-4 items-center justify-center rounded-sm text-xs text-[--color-font] ring-1 ring-transparent transition-all hover:bg-[--hl-xs] focus:ring-inset focus:ring-[--hl-md] aria-pressed:bg-[--hl-sm] group-data-[empty]:hidden"
+                      onPress={() => handleSimpleSearchChange('')}
+                    >
+                      <Icon icon="close" />
+                    </Button>
+                  )}
+                </div>
+              </SearchField>
+              
+              {/* Результаты поиска в выпадающем списке (только в режиме поиска) */}
+              {!appliedFilter && simpleTextSearch && searchResults && (
+                <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-[--color-bg] border border-[--hl-sm] rounded shadow-lg max-h-64 overflow-y-auto">
+                  <div className="px-2 py-1 text-xs font-medium text-[--hl] bg-[--hl-xs] border-b border-[--hl-sm]">
+                    Найдено {searchResults.length} совпадений:
+                  </div>
+                  {searchResults.slice(0, 15).map((result: any, index: number) => (
+                    <button
+                      key={index}
+                      className="w-full text-left px-2 py-1 text-xs font-mono hover:bg-[--hl-xs] focus:bg-[--hl-xs] focus:outline-none border-b border-[--hl-xs] last:border-b-0 transition-colors"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('Клик событие сработало', result);
+                        handleSearchResultClick(result);
+                      }}
+                      aria-label="Нажмите для фильтрации"
+                    >
+                      <div className="truncate text-[--color-font]">
+                        {typeof result === 'string' ? result : result.displayText}
+                      </div>
+                      <div className="text-[--hl] text-xs opacity-70">
+                        {result.path ? `путь: ${result.path}` : 'нет пути'}
+                      </div>
+                    </button>
+                  ))}
+                  {searchResults.length > 15 && (
+                    <div className="px-2 py-1 text-xs text-[--hl] italic bg-[--hl-xs]">
+                      ...и ещё {searchResults.length - 15}
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {!appliedFilter && simpleTextSearch && !searchResults && (
+                <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-[--color-bg] border border-[--hl-sm] rounded shadow-lg">
+                  <div className="px-2 py-2 text-xs text-[--hl]">
+                    Ничего не найдено
+                  </div>
+                </div>
+              )}
+              
+              {/* Индикатор примененного фильтра */}
+              {appliedFilter && (
+                <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-[--color-success-bg] border border-[--color-success] rounded shadow-lg">
+                  <div className="px-2 py-2 text-xs text-[--color-success]">
+                    ✓ Фильтр применен. Нажмите ✕ для сброса.
+                  </div>
+                </div>
+              )}
+            </div>
           </Toolbar>
           <ResponseViewer
             key={activeResponse._id}

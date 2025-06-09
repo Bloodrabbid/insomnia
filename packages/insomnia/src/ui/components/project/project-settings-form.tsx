@@ -41,16 +41,12 @@ import { GitLabRepositorySetupFormGroup } from '../git-credentials/gitlab-reposi
 import { Icon } from '../icon';
 import { InsomniaLogo } from '../insomnia-icon';
 
-function isSwitchingStorageType(project: Project, storageType: 'local' | 'remote' | 'git') {
+function isSwitchingStorageType(project: Project, storageType: 'local' | 'git') {
   if (storageType === 'git' && !isGitProject(project)) {
     return true;
   }
 
-  if (storageType === 'local' && (isRemoteProject(project) || isGitProject(project))) {
-    return true;
-  }
-
-  if (storageType === 'remote' && !isRemoteProject(project)) {
+  if (storageType === 'local' && isGitProject(project)) {
     return true;
   }
 
@@ -78,9 +74,12 @@ export const ProjectSettingsForm: FC<Props> = ({
 }) => {
   const { organizationId } = useParams() as { organizationId: string };
 
-  const [storageType, setStorageType] = useState<'local' | 'remote' | 'git'>(
-    getDefaultProjectStorageType(storageRules, project),
-  );
+  const [storageType, setStorageType] = useState<'local' | 'git'>(() => {
+    if (project && isGitProject(project)) {
+      return 'git';
+    }
+    return 'local';
+  });
   const [activeView, setActiveView] = useState<'project' | 'git-clone' | 'git-results' | 'switch-storage-type'>(
     'project',
   );
@@ -114,8 +113,7 @@ export const ProjectSettingsForm: FC<Props> = ({
   const initCloneGitRepositoryFetcher = useFetcher<InitGitCloneResult>();
   const upsertProjectFetcher = useFetcher<UpdateProjectActionResult>();
 
-  const showStorageRestrictionMessage =
-    !storageRules.enableCloudSync || !storageRules.enableLocalVault || !storageRules.enableGitSync;
+  const showStorageRestrictionMessage = false;
   const insomniaFiles =
     initCloneGitRepositoryFetcher.data && 'files' in initCloneGitRepositoryFetcher.data
       ? initCloneGitRepositoryFetcher.data.files
@@ -133,11 +131,7 @@ export const ProjectSettingsForm: FC<Props> = ({
     }
   }, [upsertProjectFetcher.data, upsertProjectFetcher.state]);
 
-  useEffect(() => {
-    if (storageRules) {
-      setStorageType(getDefaultProjectStorageType(storageRules, project));
-    }
-  }, [storageRules, project]);
+  // В локальной версии не используем динамические правила хранения
 
   const onGitRepoFormSubmit = (gitRepositoryPatch: Partial<GitRepository>) => {
     const { author, credentials, created, modified, isPrivate, needsFullClone, uriNeedsMigration, ...repoPatch } =
@@ -220,39 +214,25 @@ export const ProjectSettingsForm: FC<Props> = ({
               className="flex flex-col gap-2 px-0.5"
               onChange={value => {
                 error && setError(null);
-                setStorageType(value as 'local' | 'remote' | 'git');
+                setStorageType(value as 'local' | 'git');
               }}
               value={storageType}
             >
               <Label className="text-sm text-[--hl]">Project type</Label>
               <div className="flex gap-2">
                 <Radio
-                  isDisabled={!storageRules.enableLocalVault}
                   value="local"
-                  className="flex-1 rounded border border-solid border-[--hl-md] p-4 transition-colors hover:bg-[--hl-xs] focus:bg-[--hl-sm] focus:outline-none data-[selected]:border-[--color-surprise] data-[disabled]:opacity-25 data-[selected]:ring-2 data-[selected]:ring-[--color-surprise]"
+                  className="flex-1 rounded border border-solid border-[--hl-md] p-4 transition-colors hover:bg-[--hl-xs] focus:bg-[--hl-sm] focus:outline-none data-[selected]:border-[--color-surprise] data-[selected]:ring-2 data-[selected]:ring-[--color-surprise]"
                 >
                   <div className="flex items-center gap-2">
                     <Icon icon="laptop" />
                     <Heading className="text-lg font-bold">Local Vault</Heading>
                   </div>
-                  <p className="pt-2">Stored locally only, with no cloud. Ideal when collaboration is not needed.</p>
+                  <p className="pt-2">Stored locally only. Ideal when collaboration is not needed.</p>
                 </Radio>
 
                 <Radio
-                  isDisabled={!storageRules.enableCloudSync}
-                  value="remote"
-                  className="flex-1 rounded border border-solid border-[--hl-md] p-4 transition-colors hover:bg-[--hl-xs] focus:bg-[--hl-sm] focus:outline-none data-[selected]:border-[--color-surprise] data-[disabled]:opacity-25 data-[selected]:ring-2 data-[selected]:ring-[--color-surprise]"
-                >
-                  <div className="flex items-center gap-2">
-                    <Icon icon="globe" />
-                    <Heading className="text-lg font-bold">Cloud Sync</Heading>
-                  </div>
-                  <p className="pt-2">
-                    Encrypted and synced securely to the cloud, ideal for out of the box collaboration.
-                  </p>
-                </Radio>
-                <Radio
-                  isDisabled={!isGitSyncEnabled || !storageRules.enableGitSync}
+                  isDisabled={!isGitSyncEnabled}
                   value="git"
                   className="flex-1 rounded border border-solid border-[--hl-md] p-4 transition-colors hover:bg-[--hl-xs] focus:bg-[--hl-sm] focus:outline-none data-[selected]:border-[--color-surprise] data-[disabled]:opacity-25 data-[selected]:ring-2 data-[selected]:ring-[--color-surprise]"
                 >
@@ -266,15 +246,6 @@ export const ProjectSettingsForm: FC<Props> = ({
                 </Radio>
               </div>
             </RadioGroup>
-            {showStorageRestrictionMessage && (
-              <div className="flex items-center gap-2 rounded-sm bg-[rgba(var(--color-warning-rgb),0.5)] px-2 py-1 text-sm text-[--color-font-warning]">
-                <Icon icon="triangle-exclamation" />
-                <span>
-                  The organization owner mandates that projects must be created and stored using{' '}
-                  {getProjectStorageTypeLabel(storageRules)}.
-                </span>
-              </div>
-            )}
           </div>
           <div className="mt-4 flex w-full items-center justify-end gap-2 px-0.5 pb-10">
             <div className="flex items-center gap-2">
@@ -599,30 +570,6 @@ export const ProjectSettingsForm: FC<Props> = ({
                     <Icon icon="triangle-exclamation" className="text-[--color-warning]" />
                     Remember to pull your latest project updates before this operation
                   </p>
-                </div>
-              </div>
-            )}
-            {storageType === 'remote' && (
-              <div className="flex flex-col gap-4 text-[--color-font]">
-                <div className="flex flex-col gap-4">
-                  <p>
-                    We will be synchronizing your local project to Insomnia's Cloud in a secure encrypted format which
-                    will enable cloud collaboration.
-                  </p>
-                  <ul className="flex flex-col gap-2 text-left">
-                    <li>
-                      <i className="fa fa-check text-emerald-600" /> Your data in the cloud is encrypted and secure.
-                    </li>
-                    <li>
-                      <i className="fa fa-check text-emerald-600" /> You can now collaborate with any amount of users
-                      and use cloud features.
-                    </li>
-                    <li>
-                      <i className="fa fa-check text-emerald-600" /> Your project will be always available on any client
-                      after logging in.
-                    </li>
-                  </ul>
-                  <p>You can still use Git Sync for cloud projects.</p>
                 </div>
               </div>
             )}

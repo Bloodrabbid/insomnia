@@ -130,30 +130,25 @@ export enum UpdateURL {
   windows = 'https://updates.insomnia.rest/updates/win',
 }
 
-// API
-export const getApiBaseURL = () => env.INSOMNIA_API_URL || 'https://api.insomnia.rest';
-export const getMockServiceURL = () => env.INSOMNIA_MOCK_API_URL || 'https://mock.insomnia.run';
+// API - отключены для локальной версии
+export const getApiBaseURL = () => '';
+export const getMockServiceURL = () => '';
 
 export const getMockServiceBinURL = (mockServer: MockServer, path: string) => {
-  if (!mockServer.useInsomniaCloud) {
-    return `${mockServer.url}/bin/${mockServer._id}${path}`;
-  }
-  const baseUrl = getMockServiceURL();
-  const url = new URL(baseUrl);
-  url.host = mockServer._id.replace('_', '-') + '.' + url.host;
-  return url.origin + path;
+  // Возвращаем пустую строку для локальной версии
+  return '';
 };
 
-export const getAIServiceURL = () => env.INSOMNIA_AI_URL || 'https://ai-helper.insomnia.rest';
+export const getAIServiceURL = () => '';
 
-export const getUpdatesBaseURL = () => env.INSOMNIA_UPDATES_URL || 'https://updates.insomnia.rest';
+export const getUpdatesBaseURL = () => '';
 
-// App website
-export const getAppWebsiteBaseURL = () => env.INSOMNIA_APP_WEBSITE_URL || 'https://app.insomnia.rest';
+// App website - отключен для локальной версии
+export const getAppWebsiteBaseURL = () => '';
 
-// GitHub API
-export const getGitHubRestApiUrl = () => env.INSOMNIA_GITHUB_REST_API_URL || 'https://api.github.com';
-export const getGitHubGraphQLApiURL = () => env.INSOMNIA_GITHUB_API_URL || `${getGitHubRestApiUrl()}/graphql`;
+// GitHub API - отключен для локальной версии
+export const getGitHubRestApiUrl = () => '';
+export const getGitHubGraphQLApiURL = () => '';
 
 // SYNC
 export const DEFAULT_BRANCH_NAME = 'master';

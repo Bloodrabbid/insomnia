@@ -1,5 +1,6 @@
 import iconv from 'iconv-lite';
-import React, { Fragment, useCallback, useRef, useState } from 'react';
+import React, { Fragment, useCallback, useRef, useState, useMemo } from 'react';
+import { Button, Input, SearchField } from 'react-aria-components';
 
 import {
   HUGE_RESPONSE_MB,
@@ -10,6 +11,7 @@ import {
 import { unescapeForwardSlash } from '../../../common/misc';
 import { CodeEditor, type CodeEditorHandle } from '../codemirror/code-editor';
 import { useDocBodyKeyboardShortcuts } from '../keydown-binder';
+import { Icon } from '../icon';
 import { ResponseCSVViewer } from './response-csv-viewer';
 import { ResponseErrorViewer } from './response-error-viewer';
 import { ResponseMultipartViewer } from './response-multipart-viewer';
@@ -21,19 +23,15 @@ let alwaysShowLargeResponses = false;
 export interface ResponseViewerHandle {
   refresh: () => void;
 }
-export function xmlDecode(input: string) {
-  const ESCAPED_CHARACTERS_MAP = {
-    '&amp;': '&',
-    '&quot;': '"',
-    '&lt;': '<',
-    '&gt;': '>',
-  };
 
-  return input.replace(
-    /(&quot;|&lt;|&gt;|&amp;)/g,
-    (_: string, item: keyof typeof ESCAPED_CHARACTERS_MAP) => ESCAPED_CHARACTERS_MAP[item],
-  );
+export function xmlDecode(input: string) {
+  return input
+    .replace(/&quot;/gi, '"')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&amp;/gi, '&');
 }
+
 export interface ResponseViewerProps {
   bytes: number;
   contentType: string;
@@ -73,10 +71,67 @@ export const ResponseViewer = ({
   const hugeResponse = bytes > HUGE_RESPONSE_MB * 1024 * 1024;
   const [blockingBecauseTooLarge, setBlockingBecauseTooLarge] = useState(!alwaysShowLargeResponses && largeResponse);
   const [parseError, setParseError] = useState('');
+  const [simpleTextSearch, setSimpleTextSearch] = useState('');
 
   const [overSizedBody, setOversizedBody] = useState<Buffer | null>(bodyBuffer || null);
 
   const editorRef = useRef<CodeEditorHandle>(null);
+
+  // Функция для фильтрации контента по простому тексту
+  const filterContentByText = useCallback((content: string, searchText: string) => {
+    if (!searchText.trim() || !content) return content;
+    
+    const searchLower = searchText.toLowerCase().trim();
+    
+    // Для JSON попробуем более умную фильтрацию
+    if (originalContentType?.includes('json')) {
+      try {
+        const parsed = JSON.parse(content);
+        const filtered = filterObjectByText(parsed, searchLower);
+        return JSON.stringify(filtered, null, 2);
+      } catch (e) {
+        // Если не удалось распарсить JSON, делаем обычный поиск
+      }
+    }
+    
+    // Для обычного текста просто возвращаем контент как есть
+    // (подсветка будет в CodeEditor)
+    return content;
+  }, [originalContentType]);
+
+  // Рекурсивная функция для фильтрации объектов JSON
+  const filterObjectByText = (obj: any, searchText: string): any => {
+    if (typeof obj === 'string') {
+      return obj.toLowerCase().includes(searchText) ? obj : undefined;
+    }
+    if (typeof obj === 'number' || typeof obj === 'boolean') {
+      return obj.toString().toLowerCase().includes(searchText) ? obj : undefined;
+    }
+    if (Array.isArray(obj)) {
+      const filtered = obj.map(item => filterObjectByText(item, searchText)).filter(item => item !== undefined);
+      return filtered.length > 0 ? filtered : undefined;
+    }
+    if (obj && typeof obj === 'object') {
+      const filtered: any = {};
+      let hasResults = false;
+      
+      for (const [key, value] of Object.entries(obj)) {
+        if (key.toLowerCase().includes(searchText)) {
+          filtered[key] = value;
+          hasResults = true;
+        } else {
+          const filteredValue = filterObjectByText(value, searchText);
+          if (filteredValue !== undefined) {
+            filtered[key] = filteredValue;
+            hasResults = true;
+          }
+        }
+      }
+      
+      return hasResults ? filtered : undefined;
+    }
+    return undefined;
+  };
 
   const _handleDismissBlocker = useCallback(async () => {
     setBlockingBecauseTooLarge(false);
