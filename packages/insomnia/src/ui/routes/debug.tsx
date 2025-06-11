@@ -101,7 +101,8 @@ import { PlaceholderRequestPane } from '../components/panes/placeholder-request-
 import { RequestGroupPane } from '../components/panes/request-group-pane';
 import { RequestPane } from '../components/panes/request-pane';
 import { ResponsePane } from '../components/panes/response-pane';
-import { OrganizationTabList } from '../components/tabs/tab-list';
+import { SimpleTabList } from '../components/tabs/simple-tab-list';
+import { HostEnvironmentSelector } from '../components/host-environment-selector';
 import { getMethodShortHand } from '../components/tags/method-tag';
 import { RealtimeResponsePane } from '../components/websockets/realtime-response-pane';
 import { WebSocketRequestPane } from '../components/websockets/websocket-request-pane';
@@ -804,6 +805,7 @@ export const Debug: FC = () => {
             )}
             <div className="flex w-full flex-col items-start gap-2 p-[--padding-sm]">
               <div className="flex w-full items-center justify-between gap-2">
+                <HostEnvironmentSelector />
                 <EnvironmentPicker
                   isOpen={isEnvironmentPickerOpen}
                   onOpenChange={setIsEnvironmentPickerOpen}
@@ -1158,7 +1160,7 @@ export const Debug: FC = () => {
       </Panel>
       <PanelResizeHandle className="h-full w-[1px] bg-[--hl-md]" />
       <Panel className="flex flex-col">
-        <OrganizationTabList currentPage="debug" />
+                        <SimpleTabList />
         <PanelGroup autoSaveId="insomnia-panels" id="insomnia-panels" direction={direction}>
           <Routes>
             <Route

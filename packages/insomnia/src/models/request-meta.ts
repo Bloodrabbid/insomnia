@@ -21,6 +21,14 @@ export interface BaseRequestMeta {
   lastActive: number;
   downloadPath: string | null;
   expandedAccordionKeys: Partial<Record<RequestAccordionKeys, boolean>>;
+  variables?: Array<{
+    id: string;
+    name: string;
+    value: string;
+    description?: string;
+    enabled: boolean;
+    target: 'url' | 'body' | 'header';
+  }>;
 }
 
 export type RequestMeta = BaseModel & BaseRequestMeta;
@@ -39,6 +47,7 @@ export function init() {
     lastActive: 0,
     downloadPath: null,
     expandedAccordionKeys: {},
+    variables: [],
   };
 }
 

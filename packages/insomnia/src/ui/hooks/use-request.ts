@@ -39,7 +39,7 @@ export const useRequestMetaPatcher = () => {
   const fetcher = useFetcher();
   return (requestId: string, patch: Partial<GrpcRequestMeta> | Partial<RequestMeta>) => {
     updateTabById?.(requestId, { temporary: false });
-    fetcher.submit(patch, {
+    fetcher.submit(JSON.stringify(patch), {
       action: `/organization/${organizationId}/project/${projectId}/workspace/${workspaceId}/debug/request/${requestId}/update-meta`,
       method: 'post',
       encType: 'application/json',

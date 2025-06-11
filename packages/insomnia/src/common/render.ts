@@ -37,6 +37,7 @@ export async function buildRenderContext({
   rootGlobalEnvironment,
   subGlobalEnvironment,
   userUploadEnvironment,
+  requestVariables,
   transientVariables,
   baseContext,
 }: {
@@ -46,6 +47,7 @@ export async function buildRenderContext({
   rootGlobalEnvironment?: Environment | null;
   subGlobalEnvironment?: Environment | null;
   userUploadEnvironment?: UserUploadEnvironment;
+  requestVariables?: Environment;
   transientVariables?: Environment;
   baseContext: BaseRenderContext;
 }): Promise<BaseRenderContext> {
@@ -97,6 +99,16 @@ export async function buildRenderContext({
     const ordered = orderedJSON.order(
       userUploadEnvironment.data,
       userUploadEnvironment.dataPropertyOrder,
+      JSON_ORDER_SEPARATOR,
+    );
+    envObjects.push(ordered);
+  }
+
+  // request variables from Variables tab have high priority
+  if (requestVariables) {
+    const ordered = orderedJSON.order(
+      requestVariables.data,
+      requestVariables.dataPropertyOrder,
       JSON_ORDER_SEPARATOR,
     );
     envObjects.push(ordered);
@@ -477,6 +489,36 @@ export async function getRenderContext({
     getKeySource(transientVariables.data || {}, inKey, transientVariables.name || 'scriptLocalVariables');
   }
 
+  // Load request variables from RequestMeta
+  let requestVariables: Environment | undefined;
+  if (request) {
+    const requestMeta = await models.requestMeta.getByParentId(request._id);
+    if (requestMeta?.variables && Array.isArray(requestMeta.variables)) {
+      const variablesData: Record<string, string> = {};
+      for (const variable of requestMeta.variables) {
+        if (variable.enabled && variable.name && variable.value) {
+          variablesData[variable.name] = variable.value;
+        }
+      }
+      if (Object.keys(variablesData).length > 0) {
+        requestVariables = {
+          _id: 'requestVariables',
+          name: 'Request Variables',
+          data: variablesData,
+          dataPropertyOrder: null,
+          color: null,
+          isPrivate: false,
+          metaSortKey: 0,
+          parentId: request._id,
+          type: 'Environment',
+          created: Date.now(),
+          modified: Date.now(),
+        };
+        getKeySource(variablesData, inKey, 'Request Variables');
+      }
+    }
+  }
+
   // Add meta data helper function
   const baseContext: BaseRenderContext = {
     getMeta: () => ({
@@ -502,6 +544,7 @@ export async function getRenderContext({
     rootEnvironment,
     subEnvironment: subEnvironment || undefined,
     userUploadEnvironment,
+    requestVariables, // Add request variables to the context
     transientVariables,
     baseContext,
   });

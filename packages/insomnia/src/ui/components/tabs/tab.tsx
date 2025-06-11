@@ -34,6 +34,12 @@ export interface BaseTab {
   tag?: string;
   method?: string;
   temporary?: boolean;
+  // New fields for smart navigation
+  pinned?: boolean;
+  lastUsed?: number; // timestamp
+  domain?: string; // extracted from URL
+  category?: string; // auto-categorized
+  statusCode?: number; // last response status
 }
 
 const REQUEST_METHOD_STYLE_MAP: Record<string, string> = {
