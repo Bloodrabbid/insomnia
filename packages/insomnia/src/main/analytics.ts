@@ -3,19 +3,6 @@ import crypto from 'node:crypto';
 // Полностью отключена аналитика для локальной версии
 const analytics = null;
 
-import { net } from 'electron';
-import { v4 as uuidv4 } from 'uuid';
-
-import {
-  getApiBaseURL,
-  getAppPlatform,
-  getAppVersion,
-  getClientString,
-  getProductName,
-  getSegmentWriteKey,
-} from '../common/constants';
-import * as models from '../models/index';
-
 const getDeviceId = async () => {
   // Возвращаем статический ID для локальной версии
   return 'local-device-id';
@@ -75,3 +62,9 @@ function _getOsName() {
       return 'Linux';
   }
 }
+
+// Дополнительные экспорты для совместимости
+export const trackEvent = trackSegmentEvent;
+export const trackScreen = trackPageView;
+export const setup = () => console.log('[analytics] Setup disabled in local version');
+export const getInstallId = () => 'local-install-id';

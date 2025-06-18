@@ -4,8 +4,10 @@ export class VCS {
   _store: any;
   _backendProject: any = null;
 
-  constructor(store: any) {
+  constructor(store: any, conflictResolver?: any) {
     this._store = store;
+    // Игнорируем conflictResolver в локальной версии
+    console.log('[sync] VCS initialized in local mode', conflictResolver ? 'with conflict resolver' : 'without conflict resolver');
   }
 
   async archiveProject() {
@@ -16,31 +18,53 @@ export class VCS {
     return [];
   }
 
-  async remoteBackendProjects() {
+  async remoteBackendProjects(options?: any) {
+    console.log('[sync] Remote backend projects disabled in local version', options);
     return [];
   }
 
-  async status() {
+  async status(candidates?: any) {
+    console.log('[sync] Status disabled in local version', candidates);
     return {
       stage: {},
       unstaged: {},
     };
   }
 
-  async stage() {
-    console.log('[sync] Stage disabled in local version');
+  async stage(items?: any) {
+    console.log('[sync] Stage disabled in local version', items);
   }
 
   async commit() {
     console.log('[sync] Commit disabled in local version');
   }
 
-  async push() {
-    console.log('[sync] Push disabled in local version');
+  async push(options?: any) {
+    console.log('[sync] Push disabled in local version', options);
   }
 
-  async pull() {
-    console.log('[sync] Pull disabled in local version');
+  async pull(options?: any) {
+    console.log('[sync] Pull disabled in local version', options);
+  }
+
+  hasBackendProject() {
+    return false;
+  }
+
+  takeSnapshot(message?: string) {
+    console.log('[sync] Take snapshot disabled in local version', message);
+  }
+
+  allDocuments() {
+    return [];
+  }
+
+  setBackendProject(project?: any) {
+    console.log('[sync] Set backend project disabled in local version', project);
+  }
+
+  checkout(items?: any, branch?: string) {
+    console.log('[sync] Checkout disabled in local version', items, branch);
   }
 
   async customFetch() {
@@ -55,8 +79,8 @@ export class VCS {
     return { ahead: 0, behind: 0 };
   }
 
-  async switchAndCreateBackendProjectIfNotExist() {
-    console.log('[sync] Switch backend project disabled in local version');
+  async switchAndCreateBackendProjectIfNotExist(workspaceId?: string, workspaceName?: string) {
+    console.log('[sync] Switch backend project disabled in local version', workspaceId, workspaceName);
   }
 
   newInstance() {

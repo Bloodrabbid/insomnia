@@ -4,9 +4,9 @@ export const isLoggedIn = async () => false;
 
 export const getPublicKey = () => '';
 
-export const getAccountId = () => '';
+export const getAccountId = () => Promise.resolve('local-account-id');
 
-export const getSessionId = () => '';
+export const getSessionId = () => Promise.resolve('local-session-id');
 
 export const getEmail = () => '';
 
@@ -31,7 +31,7 @@ export const setVaultSessionData = () => {
 };
 
 // Дополнительные экспорты для совместимости
-export const getCurrentSessionId = async () => '';
+export const getCurrentSessionId = async () => 'local-session-id';
 
 export const getPrivateKey = async () => {
   throw new Error('Private key access disabled in local version');
@@ -43,11 +43,11 @@ export const logout = async () => {
 
 export const getUserSession = async (): Promise<SessionData> => {
   return {
-    id: '',
-    accountId: '',
-    email: '',
-    firstName: '',
-    lastName: '',
+    id: 'local-session-id',
+    accountId: 'local-account-id',
+    email: 'local@example.com',
+    firstName: 'Local',
+    lastName: 'User',
   };
 };
 
