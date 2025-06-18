@@ -415,6 +415,112 @@ export const SimpleTabList: React.FC = () => {
     });
   };
 
+  // Функция для форматирования JSON
+  const formatBodyContent = (bodyText: string): string => {
+    try {
+      // Пытаемся распарсить как JSON и красиво отформатировать
+      const parsed = JSON.parse(bodyText);
+      return JSON.stringify(parsed, null, 2);
+    } catch {
+      // Если не JSON, возвращаем как есть
+      return bodyText;
+    }
+  };
+
+  // Функция для получения расширенной информации о запросе
+  const getRequestTooltipContent = async (tab: EnhancedTab): Promise<string> => {
+    if (tab.type !== 'request') {
+      return `📁 ${tab.name}\nТип: ${tab.type}`;
+    }
+
+    try {
+      const request = await models.request.getById(tab.id);
+      if (!request) return `⚠️ ${tab.name}\nЗапрос не найден`;
+
+      let content = `📍 ${tab.name}\n`;
+      content += `🌐 ${tab.realUrl || request.url || 'URL не указан'}\n`;
+      content += `📝 ${request.method || 'GET'}`;
+
+      // Добавляем информацию о теле запроса
+      if (request.body && request.body.text) {
+        const bodyText = request.body.text.trim();
+        if (bodyText) {
+          let formattedBody = formatBodyContent(bodyText);
+          
+          // Обрезаем слишком длинное содержимое
+          if (formattedBody.length > 300) {
+            const lines = formattedBody.split('\n');
+            let truncated = '';
+            let charCount = 0;
+            
+            for (const line of lines) {
+              if (charCount + line.length > 280) {
+                truncated += '...';
+                break;
+              }
+              truncated += line + '\n';
+              charCount += line.length + 1;
+            }
+            formattedBody = truncated;
+          }
+          
+          content += `\n\n📄 Тело запроса:\n${formattedBody}`;
+        }
+      }
+
+      // Добавляем информацию о параметрах URL
+      if (request.parameters && request.parameters.length > 0) {
+        const enabledParams = request.parameters.filter(p => !p.disabled);
+        if (enabledParams.length > 0) {
+          content += `\n🔗 Параметры: ${enabledParams.length} шт.`;
+        }
+      }
+
+      // Добавляем информацию о заголовках
+      if (request.headers && request.headers.length > 0) {
+        const enabledHeaders = request.headers.filter(h => !h.disabled);
+        if (enabledHeaders.length > 0) {
+          content += `\n📋 Заголовки: ${enabledHeaders.length} шт.`;
+        }
+      }
+
+      return content;
+    } catch (error) {
+      console.warn('Failed to get request details for tooltip:', error);
+      return `❌ ${tab.name}\nОшибка загрузки данных`;
+    }
+  };
+
+  // Компонент для расширенного tooltip
+  const TooltipWrapper: React.FC<{ tab: EnhancedTab; children: React.ReactNode }> = ({ tab, children }) => {
+    const [tooltipContent, setTooltipContent] = useState<string>('');
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleMouseEnter = async () => {
+      if (!tooltipContent && !isLoading) {
+        setIsLoading(true);
+        try {
+          const content = await getRequestTooltipContent(tab);
+          setTooltipContent(content);
+        } catch (error) {
+          setTooltipContent(`${tab.name}\n❌ Ошибка загрузки`);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    return (
+      <div 
+        onMouseEnter={handleMouseEnter}
+        title={tooltipContent || (isLoading ? 'Загрузка...' : '')}
+        style={{ whiteSpace: 'pre-line' }}
+      >
+        {children}
+      </div>
+    );
+  };
+
   // Если нет табов, не показываем компонент (после всех хуков)
   if (!tabList || tabList.length === 0) {
     return null;
@@ -474,28 +580,29 @@ export const SimpleTabList: React.FC = () => {
                 />
                 <span className="flex-1 text-left">{group.title}</span>
               </Button>
-              {!isGroupCollapsed && (
-                <div className="transition-all duration-150">
-                  {group.tabs.map((tab) => {
-                    const isActive = activeTabId === tab.id;
-                    return (
-                      <div 
-                        key={tab.id} 
-                        className={`flex items-center cursor-pointer transition-all duration-150 ${
-                          isActive 
-                            ? 'bg-[--hl-sm] border-l-4 border-[--color-surprise] shadow-sm' 
-                            : 'hover:bg-[--hl-xs] border-l-4 border-transparent'
-                        }`}
-                        onClick={() => updateLastUsed(tab.id)}
-                      >
-                        <div className="flex-1">
-                          <SimpleTab tab={tab} isActive={isActive} onTogglePin={togglePin} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                              {!isGroupCollapsed && (
+                 <div className="transition-all duration-150">
+                   {group.tabs.map((tab) => {
+                     const isActive = activeTabId === tab.id;
+                     return (
+                       <TooltipWrapper key={tab.id} tab={tab}>
+                         <div 
+                           className={`flex items-center cursor-pointer transition-all duration-150 ${
+                             isActive 
+                               ? 'bg-[--hl-sm] border-l-4 border-[--color-surprise] shadow-sm' 
+                               : 'hover:bg-[--hl-xs] border-l-4 border-transparent'
+                           }`}
+                           onClick={() => updateLastUsed(tab.id)}
+                         >
+                           <div className="flex-1">
+                             <SimpleTab tab={tab} isActive={isActive} onTogglePin={togglePin} />
+                           </div>
+                         </div>
+                       </TooltipWrapper>
+                     );
+                   })}
+                 </div>
+               )}
             </div>
           );
         })}
