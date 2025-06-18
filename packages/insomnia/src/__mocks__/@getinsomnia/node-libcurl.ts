@@ -335,6 +335,31 @@ class Curl extends EventEmitter {
     }
   }
 
+  _determineHttpMethod(): string {
+    // Если установлен CUSTOMREQUEST, используем его
+    if (this._options[Curl.option.CUSTOMREQUEST]) {
+      return this._options[Curl.option.CUSTOMREQUEST];
+    }
+    
+    // Если установлена опция POST или есть POSTFIELDS, то POST
+    if (this._options[Curl.option.POST] || this._options[Curl.option.POSTFIELDS]) {
+      return 'POST';
+    }
+    
+    // Если установлена опция UPLOAD, то PUT
+    if (this._options[Curl.option.UPLOAD]) {
+      return 'PUT';
+    }
+    
+    // Если есть READFUNCTION с данными, то тоже POST
+    if (this._meta[`${Curl.option.READFUNCTION}_VALUE`]) {
+      return 'POST';
+    }
+    
+    // По умолчанию GET
+    return 'GET';
+  }
+
   perform() {
     process.nextTick(() => {
       const url = this._options[Curl.option.URL] || '';
@@ -348,28 +373,69 @@ class Curl extends EventEmitter {
           hostname: urlObj.hostname,
           port: urlObj.port || (isHttps ? 443 : 80),
           path: urlObj.pathname + urlObj.search,
-          method: this._options[Curl.option.CUSTOMREQUEST] || 'GET',
+          method: this._determineHttpMethod(),
           headers: {} as Record<string, string>,
           timeout: this._options[Curl.option.TIMEOUT_MS] || 30000,
           rejectUnauthorized: this._options[Curl.option.SSL_VERIFYPEER] !== false
         };
 
+        // Устанавливаем дефолтный User-Agent как у настоящего Insomnia
+        options.headers['User-Agent'] = 'Insomnia/11.2.0';
+
+        // Добавляем стандартные заголовки как curl
+        options.headers['Accept'] = '*/*';
+        
         // Добавляем заголовки из HTTPHEADER
         if (this._options[Curl.option.HTTPHEADER]) {
           this._options[Curl.option.HTTPHEADER].forEach((header: string) => {
-            const [name, ...valueParts] = header.split(':');
-            if (name && valueParts.length > 0) {
-              options.headers[name.trim()] = valueParts.join(':').trim();
+            const colonIndex = header.indexOf(':');
+            if (colonIndex > 0) {
+              const name = header.substring(0, colonIndex).trim();
+              const value = header.substring(colonIndex + 1).trim();
+              if (name && value) {
+                options.headers[name] = value;
+              }
             }
           });
         }
 
-        // Добавляем User-Agent если установлен
+        // Переопределяем User-Agent если установлен явно
         if (this._options[Curl.option.USERAGENT]) {
           options.headers['User-Agent'] = this._options[Curl.option.USERAGENT];
         }
 
+        // Для POST/PUT запросов добавляем Content-Length если есть данные
+        let postData = null;
+        if (this._options[Curl.option.POSTFIELDS]) {
+          postData = this._options[Curl.option.POSTFIELDS];
+          if (typeof postData === 'string') {
+            postData = Buffer.from(postData);
+          }
+          options.headers['Content-Length'] = postData.length.toString();
+          
+          // Добавляем Content-Type если не установлен
+          if (!options.headers['Content-Type'] && !options.headers['content-type']) {
+            options.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+          }
+        } else if (this._meta[`${Curl.option.READFUNCTION}_VALUE`]) {
+          postData = Buffer.from(this._meta[`${Curl.option.READFUNCTION}_VALUE`]);
+          options.headers['Content-Length'] = postData.length.toString();
+        }
+
+        console.log('Mock HTTP Request:', {
+          method: options.method,
+          url: url,
+          headers: options.headers,
+          hasPostData: !!postData
+        });
+
         const req = lib.request(options, (res) => {
+          console.log('Mock HTTP Response:', {
+            statusCode: res.statusCode,
+            statusMessage: res.statusMessage,
+            headers: res.headers
+          });
+          
           let responseData = Buffer.alloc(0);
           
           res.on('data', (chunk) => {
@@ -424,8 +490,8 @@ class Curl extends EventEmitter {
         });
 
         // Отправляем данные POST/PUT если есть
-        if (this._options[Curl.option.POSTFIELDS]) {
-          req.write(this._options[Curl.option.POSTFIELDS]);
+        if (postData) {
+          req.write(postData);
         }
 
         req.end();

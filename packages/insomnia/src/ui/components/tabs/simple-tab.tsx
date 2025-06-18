@@ -7,6 +7,9 @@ import { useInsomniaTabContext } from '../../context/app/insomnia-tab-context';
 import { Icon } from '../icon';
 import { Tooltip } from '../tooltip';
 import type { BaseTab, TabType } from './tab';
+import * as models from '../../../models';
+import { duplicate } from '../../../models/helpers/request-operations';
+import { isRequest } from '../../../models/request';
 
 const REQUEST_METHOD_STYLE_MAP: Record<string, string> = {
   GET: 'text-[--color-font-surprise] bg-[rgba(var(--color-surprise-rgb),0.5)]',
@@ -45,7 +48,48 @@ const WORKSPACE_TAB_UI_MAP: Partial<Record<TabType, any>> = {
 };
 
 export const SimpleTab = ({ tab, isActive, onTogglePin }: { tab: BaseTab; isActive?: boolean; onTogglePin?: (tabId: string) => void }) => {
-  const { closeTabById, currentOrgTabs } = useInsomniaTabContext();
+  const { closeTabById, currentOrgTabs, addTab } = useInsomniaTabContext();
+
+  const handleDuplicate = async (id: string) => {
+    const request = await models.request.getById(id);
+    if (request && isRequest(request)) {
+      // Найти или создать папку "Дубликаты"
+      let duplicatesFolder = await models.requestGroup.findByParentId(tab.workspaceId)
+        .then(folders => folders.find(f => f.name === 'Дубликаты'));
+      
+      if (!duplicatesFolder) {
+        duplicatesFolder = await models.requestGroup.create({
+          parentId: tab.workspaceId,
+          name: 'Дубликаты',
+          description: 'Папка для дублированных запросов'
+        });
+        await models.requestGroupMeta.create({ parentId: duplicatesFolder._id, collapsed: false });
+      }
+      
+      const duplicatedRequest = await duplicate(request, { 
+        name: `${request.name} (Copy)`,
+        parentId: duplicatesFolder._id
+      });
+      
+      // Создаем новую вкладку для дублированного запроса
+      const newTab = {
+        type: 'request' as const,
+        name: duplicatedRequest.name,
+        url: `/organization/${tab.organizationId}/project/${tab.projectId}/workspace/${tab.workspaceId}/debug/request/${duplicatedRequest._id}`,
+        organizationId: tab.organizationId,
+        projectId: tab.projectId,
+        workspaceId: tab.workspaceId,
+        projectName: tab.projectName,
+        workspaceName: tab.workspaceName,
+        id: duplicatedRequest._id,
+        tag: tab.tag,
+        method: tab.method,
+      };
+      
+      // Добавляем вкладку в список
+      addTab(newTab);
+    }
+  };
 
   const renderTabIcon = (type: TabType) => {
     if (WORKSPACE_TAB_UI_MAP[type]) {
@@ -122,6 +166,19 @@ export const SimpleTab = ({ tab, isActive, onTogglePin }: { tab: BaseTab; isActi
           {tab.name}
         </span>
         <div className="flex items-center gap-1">
+          {tab.type === 'request' && (
+            <div onClick={e => e.stopPropagation()}>
+              <Tooltip message="Duplicate" delay={500}>
+                <Button
+                  aria-label="Duplicate Tab"
+                  className="flex h-[15px] w-[15px] items-center justify-center hover:bg-[--hl-md] rounded"
+                  onPress={() => handleDuplicate(tab.id)}
+                >
+                  <Icon icon="copy" />
+                </Button>
+              </Tooltip>
+            </div>
+          )}
           <Button
             aria-label="Close Tab"
             data-testid="tab-close-button"

@@ -1,13 +1,18 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { Button } from 'react-aria-components';
 import { Icon } from '../icon';
 import type { BaseTab } from './tab';
 import { SimpleTab } from './simple-tab';
 import { useInsomniaTabContext } from '../../context/app/insomnia-tab-context';
-import { useRouteLoaderData } from 'react-router';
+import { useRouteLoaderData, useParams } from 'react-router';
 import { getRenderContext, render } from '../../../common/render';
 import type { WorkspaceLoaderData } from '../../routes/workspace';
 import * as models from '../../../models';
+import { type ChangeBufferEvent, type ChangeType, database } from '../../../common/database';
+import { isRequest, type Request } from '../../../models/request';
+import { isRequestGroup } from '../../../models/request-group';
+import type { MockRoute } from '../../../models/mock-route';
+import { formatMethodName, getRequestMethodShortHand } from '../tags/method-tag';
 
 interface TabGroup {
   key: string;
@@ -25,9 +30,126 @@ export const SimpleTabList: React.FC = () => {
   const [enhancedTabsState, setEnhancedTabsState] = useState<EnhancedTab[]>([]);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   
-  const { currentOrgTabs, updateTabById, changeActiveTab } = useInsomniaTabContext();
+  const { currentOrgTabs, updateTabById, changeActiveTab, batchUpdateTabs } = useInsomniaTabContext();
   const { tabList, activeTabId } = currentOrgTabs;
   const workspaceData = useRouteLoaderData(':workspaceId') as WorkspaceLoaderData;
+  const { organizationId, projectId } = useParams();
+
+  // Функция для проверки, нужно ли обрабатывать изменение
+  const needHandleChange = (changeType: ChangeType, docType: string) => {
+    if (changeType !== 'update' && changeType !== 'remove') {
+      return false;
+    }
+    const list = [
+      models.request.type,
+      models.grpcRequest.type,
+      models.webSocketRequest.type,
+      models.requestGroup.type,
+      models.unitTestSuite.type,
+      models.workspace.type,
+      models.environment.type,
+      models.mockRoute.type,
+      models.project.type,
+    ];
+    return list.includes(docType);
+  };
+
+  // Функция для обновления табов при изменении модели
+  const handleUpdate = useCallback(
+    async (doc: models.BaseModel, patches: Partial<models.BaseModel>[] = []) => {
+      const patchObj: Record<string, any> = {};
+      patches.forEach(patch => {
+        Object.assign(patchObj, patch);
+      });
+      // только нужно обрабатывать изменения name, method, parentId
+      if (!patchObj.name && !patchObj.method && !patchObj.parentId) {
+        return;
+      }
+      if (patchObj.name) {
+        if (doc.type !== models.project.type && doc.type !== models.workspace.type) {
+          updateTabById?.(doc._id, {
+            name: doc.name,
+          });
+        }
+      }
+
+      if (patchObj.method) {
+        if (
+          doc.type === models.request.type ||
+          doc.type === models.grpcRequest.type ||
+          doc.type === models.webSocketRequest.type
+        ) {
+          const tag = getRequestMethodShortHand(doc as Request);
+          const method = (doc as Request).method;
+          updateTabById?.(doc._id, {
+            method,
+            tag,
+          });
+        } else if (doc.type === models.mockRoute.type) {
+          const method = (doc as MockRoute).method;
+          const tag = formatMethodName(method);
+          updateTabById?.(doc._id, {
+            method,
+            tag,
+          });
+        }
+      }
+
+      // переместить запрос или requestGroup в другую коллекцию
+      if (patchObj.parentId && !patchObj.metaSortKey && (patchObj.parentId as string).startsWith('wrk_')) {
+        const workspace = await models.workspace.getById(patchObj.parentId);
+        if (workspace) {
+          if (isRequest(doc)) {
+            updateTabById?.(doc._id, {
+              workspaceId: workspace._id,
+              workspaceName: workspace.name,
+              url: `/organization/${organizationId}/project/${projectId}/workspace/${workspace._id}/debug/request/${doc._id}`,
+            });
+          } else if (isRequestGroup(doc)) {
+            const folderEntities = await database.withDescendants(doc, models.request.type, [
+              models.request.type,
+              models.requestGroup.type,
+            ]);
+            const batchUpdates = [doc, ...folderEntities].map(entity => {
+              return {
+                id: entity._id,
+                fields: {
+                  workspaceId: workspace._id,
+                  workspaceName: workspace.name,
+                  url: isRequestGroup(entity)
+                    ? `/organization/${organizationId}/project/${projectId}/workspace/${workspace._id}/debug/request-group/${entity._id}`
+                    : `/organization/${organizationId}/project/${projectId}/workspace/${workspace._id}/debug/request/${entity._id}`,
+                },
+              };
+            });
+            batchUpdateTabs?.(batchUpdates);
+          }
+        }
+      }
+    },
+    [organizationId, projectId, updateTabById, batchUpdateTabs],
+  );
+
+  // Слушаем изменения в базе данных для синхронизации табов
+  useEffect(() => {
+    const callback = async (changes: ChangeBufferEvent[]) => {
+      for (const change of changes) {
+        const changeType = change[0];
+        const doc = change[1];
+        if (needHandleChange(changeType, doc.type)) {
+          if (changeType === 'update') {
+            const patches = change[3];
+            handleUpdate(doc, patches);
+          }
+        }
+      }
+    };
+    database.onChange(callback);
+
+    return () => {
+      database.offChange(callback);
+    };
+  }, [handleUpdate]);
 
   // Загружаем реальные URL для запросов с разрешенными переменными среды
   useEffect(() => {
