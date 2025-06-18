@@ -62,11 +62,15 @@ export default async function build(options: Options) {
     sourcemap: true,
     format: 'cjs',
     define: env,
+    alias: {
+      '@getinsomnia/node-libcurl': path.join(__dirname, 'src/__mocks__/@getinsomnia/node-libcurl.ts'),
+    },
     external: [
       'electron',
-      '@getinsomnia/node-libcurl',
       'fsevents',
-      ...Object.keys(pkg.dependencies),
+      ...Object.keys(pkg.dependencies).filter(
+        d => d !== '@getinsomnia/node-libcurl'
+      ),
       ...Object.keys(builtinModules),
     ],
   });

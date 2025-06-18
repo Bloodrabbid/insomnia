@@ -151,6 +151,7 @@
     "electron-builder": "26.0.13",
     "electron-builder-squirrel-windows": "26.0.13",
     "electron-devtools-installer": "^3.2.1",
+    "electron-rebuild": "^3.2.9",
     "esbuild": "^0.25.2",
     "esbuild-plugin-alias": "0.2.1",
     "esbuild-runner": "^2.2.2",

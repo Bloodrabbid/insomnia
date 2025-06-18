@@ -36,11 +36,14 @@ export default defineConfig(({ mode }) => {
           mainWindow: path.join(__dirname, 'src/index.html'),
           hiddenBrowserWindow: path.join(__dirname, 'src/hidden-window.html'),
         },
-        external: ['@getinsomnia/node-libcurl'],
+      },
+    },
+    resolve: {
+      alias: {
+        '@getinsomnia/node-libcurl': path.join(__dirname, 'src/__mocks__/@getinsomnia/node-libcurl.ts'),
       },
     },
     optimizeDeps: {
-      exclude: ['@getinsomnia/node-libcurl'],
       // these packages are only used in web worker, Vite won't be able to discover the import on the initial scan，so we need to include them here to let vite pre-bundle them
       // https://vitejs.dev/guide/dep-pre-bundling.html#customizing-the-behavior
       include: [
@@ -59,7 +62,9 @@ export default defineConfig(({ mode }) => {
       electronNodeRequire({
         modules: [
           'electron',
-          ...Object.keys(pkg.dependencies),
+          ...Object.keys(pkg.dependencies).filter(
+            d => d !== '@getinsomnia/node-libcurl'
+          ),
           ...builtinModules.filter(m => m !== 'buffer'),
           ...builtinModules.map(m => `node:${m}`),
         ],
