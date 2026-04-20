@@ -209,7 +209,8 @@
   },
   "optionalDependencies": {
     "@kong/insomnia-plugin-ai": "^1.0.9",
-    "@kong/insomnia-plugin-external-vault": "0.1.4-dev.20251224090833"
+    "@kong/insomnia-plugin-external-vault": "0.1.4-dev.20251224090833",
+    "insomnia-plugin-universal-git": "file:./src/plugins/insomnia-plugin-universal-git"
   },
   "dev": {
     "dev-server-port": 3334
