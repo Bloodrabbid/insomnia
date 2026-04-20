@@ -1,0 +1,95 @@
+
+> insomnia@11.2.0 type-check
+> tsc --noEmit --project tsconfig.json
+
+src/common/constants.ts(137,38): error TS6133: 'mockServer' is declared but its value is never read.
+src/common/constants.ts(137,62): error TS6133: 'path' is declared but its value is never read.
+src/main/analytics.ts(4,7): error TS6133: 'analytics' is declared but its value is never read.
+src/main/analytics.ts(6,7): error TS6133: 'getDeviceId' is declared but its value is never read.
+src/main/analytics.ts(38,10): error TS6133: 'hashString' is declared but its value is never read.
+src/main/analytics.ts(55,10): error TS6133: '_getOsName' is declared but its value is never read.
+src/main/sentry.ts(3,1): error TS6133: 'Sentry' is declared but its value is never read.
+src/main/sentry.ts(5,1): error TS6133: 'session' is declared but its value is never read.
+src/main/sentry.ts(6,1): error TS6192: All imports in import declaration are unused.
+src/main/sentry.ts(7,1): error TS6133: 'SENTRY_OPTIONS' is declared but its value is never read.
+src/main/sentry.ts(8,1): error TS6133: 'models' is declared but its value is never read.
+src/main/sentry.ts(9,1): error TS6133: 'isSettings' is declared but its value is never read.
+src/main/sentry.ts(11,5): error TS6133: 'enabled' is declared but its value is never read.
+src/sync/vcs/insomnia-sync.ts(21,32): error TS7006: Parameter 'conflicts' implicitly has an 'any' type.
+src/sync/vcs/insomnia-sync.ts(21,43): error TS7006: Parameter 'labels' implicitly has an 'any' type.
+src/sync/vcs/pull-backend-project.ts(26,57): error TS2345: Argument of type '"master"' is not assignable to parameter of type 'never'.
+src/sync/vcs/pull-backend-project.ts(52,3): error TS2578: Unused '@ts-expect-error' directive.
+src/sync/vcs/pull-backend-project.ts(57,11): error TS2339: Property 'parentId' does not exist on type 'never'.
+src/sync/vcs/pull-backend-project.ts(58,25): error TS2339: Property '_id' does not exist on type 'never'.
+src/ui/auth-session-provider.ts(1,19): error TS6133: 'open' is declared but its value is never read.
+src/ui/auth-session-provider.ts(3,1): error TS6133: 'session' is declared but its value is never read.
+src/ui/auth-session-provider.ts(4,10): error TS6133: 'getAppWebsiteBaseURL' is declared but its value is never read.
+src/ui/auth-session-provider.ts(5,1): error TS6133: 'invariant' is declared but its value is never read.
+src/ui/auth-session-provider.ts(7,11): error TS6196: 'AuthBox' is declared but never used.
+src/ui/components/dropdowns/content-type-dropdown.tsx(172,32): error TS18047: 'mimeType' is possibly 'null'.
+src/ui/components/dropdowns/grpc-method-dropdown/grpc-method-dropdown.tsx(82,22): error TS18047: 'key' is possibly 'null'.
+src/ui/components/dropdowns/sync-dropdown.tsx(19,15): error TS2305: Module '"../../routes/remote-collections"' has no exported member 'SyncDataLoaderData'.
+src/ui/components/dropdowns/sync-dropdown.tsx(163,27): error TS7006: Parameter 'branch' implicitly has an 'any' type.
+src/ui/components/dropdowns/sync-dropdown.tsx(403,49): error TS7006: Parameter 'remoteBranch' implicitly has an 'any' type.
+src/ui/components/dropdowns/websocket-preview-mode.tsx(32,18): error TS18047: 'contentType' is possibly 'null'.
+src/ui/components/dropdowns/workspace-sync-dropdown.tsx(13,26): error TS6133: 'activeWorkspace' is declared but its value is never read.
+src/ui/components/dropdowns/workspace-sync-dropdown.tsx(17,9): error TS6133: 'userSession' is declared but its value is never read.
+src/ui/components/editors/request-variables-editor.tsx(3,10): error TS6133: 'useParams' is declared but its value is never read.
+src/ui/components/panes/request-pane.tsx(26,1): error TS6133: 'MarkdownEditor' is declared but its value is never read.
+src/ui/components/project/project-settings-form.tsx(27,3): error TS6133: 'getDefaultProjectStorageType' is declared but its value is never read.
+src/ui/components/project/project-settings-form.tsx(28,3): error TS6133: 'getProjectStorageTypeLabel' is declared but its value is never read.
+src/ui/components/project/project-settings-form.tsx(67,3): error TS6133: 'storageRules' is declared but its value is never read.
+src/ui/components/project/project-settings-form.tsx(116,9): error TS6133: 'showStorageRestrictionMessage' is declared but its value is never read.
+src/ui/components/settings/import-export.tsx(57,39): error TS18047: 'key' is possibly 'null'.
+src/ui/components/settings/import-export.tsx(145,34): error TS18047: 'key' is possibly 'null'.
+src/ui/components/tabs/simple-tab-list.tsx(308,9): error TS6133: 'extractDomain' is declared but its value is never read.
+src/ui/components/tabs/simple-tab-list.tsx(364,9): error TS6133: 'categorizeTab' is declared but its value is never read.
+src/ui/components/tabs/simple-tab-list.tsx(441,48): error TS6133: 'domain' is declared but its value is never read.
+src/ui/components/tabs/simple-tab-list.tsx(450,13): error TS6133: 'methodsStr' is declared but its value is never read.
+src/ui/components/tabs/simple-tab.tsx(2,17): error TS6133: 'useCallback' is declared but its value is never read.
+src/ui/components/tabs/simple-tab.tsx(5,1): error TS6133: 'scrollElementIntoView' is declared but its value is never read.
+src/ui/components/tabs/simple-tab.tsx(51,25): error TS6133: 'currentOrgTabs' is declared but its value is never read.
+src/ui/components/tabs/smart-tab-list.tsx(26,20): error TS6133: 'activeTabId' is declared but its value is never read.
+src/ui/components/viewers/response-cookies-viewer.tsx(107,35): error TS2345: Argument of type '(parsedCookie: { index: number; cookie: Cookie | null; header: any; }) => React.JSX.Element' is not assignable to parameter of type '(value: { index: number; cookie: Cookie | null | undefined; header: any; }, index: number, array: { index: number; cookie: Cookie | null | undefined; header: any; }[]) => Element'.
+  Types of parameters 'parsedCookie' and 'value' are incompatible.
+    Type '{ index: number; cookie: Cookie | null | undefined; header: any; }' is not assignable to type '{ index: number; cookie: Cookie | null; header: any; }'.
+      Types of property 'cookie' are incompatible.
+        Type 'Cookie | null | undefined' is not assignable to type 'Cookie | null'.
+          Type 'undefined' is not assignable to type 'Cookie | null'.
+src/ui/components/viewers/response-viewer.tsx(2,58): error TS6133: 'useMemo' is declared but its value is never read.
+src/ui/components/viewers/response-viewer.tsx(3,1): error TS6192: All imports in import declaration are unused.
+src/ui/components/viewers/response-viewer.tsx(14,1): error TS6133: 'Icon' is declared but its value is never read.
+src/ui/components/viewers/response-viewer.tsx(74,10): error TS6133: 'simpleTextSearch' is declared but its value is never read.
+src/ui/components/viewers/response-viewer.tsx(74,28): error TS6133: 'setSimpleTextSearch' is declared but its value is never read.
+src/ui/components/viewers/response-viewer.tsx(81,9): error TS6133: 'filterContentByText' is declared but its value is never read.
+src/ui/index.tsx(77,9): error TS2554: Expected 0 arguments, but got 8.
+src/ui/index.tsx(82,17): error TS2339: Property 'symmetricKey' does not exist on type 'SessionData'.
+src/ui/index.tsx(83,17): error TS2339: Property 'publicKey' does not exist on type 'SessionData'.
+src/ui/index.tsx(84,17): error TS2339: Property 'encPrivateKey' does not exist on type 'SessionData'.
+src/ui/index.tsx(87,35): error TS2554: Expected 0 arguments, but got 2.
+src/ui/index.tsx(1012,85): error TS2339: Property 'syncDataAction' does not exist on type 'typeof import("/Users/udinkirill/tele2-git/insomnia/packages/insomnia/src/ui/routes/remote-collections")'.
+src/ui/index.tsx(1014,85): error TS2339: Property 'syncDataLoader' does not exist on type 'typeof import("/Users/udinkirill/tele2-git/insomnia/packages/insomnia/src/ui/routes/remote-collections")'.
+src/ui/index.tsx(1024,85): error TS2551: Property 'unstageChangesAction' does not exist on type 'typeof import("/Users/udinkirill/tele2-git/insomnia/packages/insomnia/src/ui/routes/remote-collections")'. Did you mean 'stageChangesAction'?
+src/ui/index.tsx(1039,85): error TS2339: Property 'rollbackChangesAction' does not exist on type 'typeof import("/Users/udinkirill/tele2-git/insomnia/packages/insomnia/src/ui/routes/remote-collections")'.
+src/ui/index.tsx(1044,85): error TS2551: Property 'restoreChangesAction' does not exist on type 'typeof import("/Users/udinkirill/tele2-git/insomnia/packages/insomnia/src/ui/routes/remote-collections")'. Did you mean 'stageChangesAction'?
+src/ui/index.tsx(1052,89): error TS2339: Property 'checkoutBranchAction' does not exist on type 'typeof import("/Users/udinkirill/tele2-git/insomnia/packages/insomnia/src/ui/routes/remote-collections")'.
+src/ui/index.tsx(1057,89): error TS2339: Property 'createBranchAction' does not exist on type 'typeof import("/Users/udinkirill/tele2-git/insomnia/packages/insomnia/src/ui/routes/remote-collections")'.
+src/ui/index.tsx(1062,89): error TS2339: Property 'fetchRemoteBranchAction' does not exist on type 'typeof import("/Users/udinkirill/tele2-git/insomnia/packages/insomnia/src/ui/routes/remote-collections")'.
+src/ui/index.tsx(1069,89): error TS2339: Property 'deleteBranchAction' does not exist on type 'typeof import("/Users/udinkirill/tele2-git/insomnia/packages/insomnia/src/ui/routes/remote-collections")'.
+src/ui/index.tsx(1074,89): error TS2339: Property 'mergeBranchAction' does not exist on type 'typeof import("/Users/udinkirill/tele2-git/insomnia/packages/insomnia/src/ui/routes/remote-collections")'.
+src/ui/index.tsx(1079,89): error TS2339: Property 'createSnapshotAction' does not exist on type 'typeof import("/Users/udinkirill/tele2-git/insomnia/packages/insomnia/src/ui/routes/remote-collections")'.
+src/ui/index.tsx(1084,89): error TS2339: Property 'createSnapshotAndPushAction' does not exist on type 'typeof import("/Users/udinkirill/tele2-git/insomnia/packages/insomnia/src/ui/routes/remote-collections")'.
+src/ui/index.tsx(1091,89): error TS2339: Property 'rollbackChangesAction' does not exist on type 'typeof import("/Users/udinkirill/tele2-git/insomnia/packages/insomnia/src/ui/routes/remote-collections")'.
+src/ui/index.tsx(1128,98): error TS2339: Property 'remoteLoader' does not exist on type 'typeof import("/Users/udinkirill/tele2-git/insomnia/packages/insomnia/src/ui/routes/remote-collections")'.
+src/ui/index.tsx(1133,77): error TS2339: Property 'pullRemoteCollectionAction' does not exist on type 'typeof import("/Users/udinkirill/tele2-git/insomnia/packages/insomnia/src/ui/routes/remote-collections")'.
+src/ui/index.tsx(1156,82): error TS2339: Property 'action' does not exist on type 'typeof import("/Users/udinkirill/tele2-git/insomnia/packages/insomnia/src/ui/routes/auth.login")'.
+src/ui/routes/auth.authorize.tsx(18,38): error TS2554: Expected 0 arguments, but got 1.
+src/ui/routes/auth.authorize.tsx(21,14): error TS2339: Property 'message' does not exist on type 'never'.
+src/ui/routes/auth.authorize.tsx(23,18): error TS2339: Property 'message' does not exist on type 'never'.
+src/ui/routes/debug.tsx(871,32): error TS18047: 'order' is possibly 'null'.
+src/ui/routes/project.tsx(406,74): error TS2339: Property 'id' does not exist on type 'never'.
+src/ui/routes/project.tsx(415,18): error TS2339: Property 'rootDocumentId' does not exist on type 'never'.
+src/ui/routes/project.tsx(423,65): error TS2339: Property 'rootDocumentId' does not exist on type 'never'.
+src/ui/routes/project.tsx(428,28): error TS2339: Property 'rootDocumentId' does not exist on type 'never'.
+src/ui/routes/project.tsx(429,30): error TS2339: Property 'name' does not exist on type 'never'.
+src/ui/routes/project.tsx(432,34): error TS2339: Property 'id' does not exist on type 'never'.

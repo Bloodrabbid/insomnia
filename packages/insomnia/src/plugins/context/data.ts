@@ -1,8 +1,9 @@
 import type { Workspace } from '~/insomnia-data';
 import { services } from '~/insomnia-data';
-
 import { exportWorkspacesHAR } from '../../common/har';
-import { fetchImportContentFromURI, importResourcesToProject, scanResources } from '../../common/import';
+import { fetchImportContentFromURI, importResourcesToProject, importResourcesToWorkspace, scanResources } from '../../common/import';
+import * as db from '../../common/database';
+import * as models from '../../models';
 import { getInsomniaV5DataExport } from '../../common/insomnia-v5';
 
 
@@ -59,6 +60,27 @@ export const init = (activeProjectId?: string) => ({
         await importResourcesToProject({
           projectId: activeProjectId,
         });
+      },
+      toCurrentWorkspace: async (content: string, workspaceId: string) => {
+        await scanResources([
+          {
+            contentStr: content,
+          },
+        ]);
+
+        await importResourcesToWorkspace({
+          workspaceId,
+        });
+      },
+      clearWorkspace: async (workspaceId: string) => {
+        const workspace = await db.database.findOne<models.Workspace>(models.workspace.type, { _id: workspaceId });
+        if (!workspace) {
+          return;
+        }
+        const descendants = await db.database.getWithDescendants(workspace);
+        // Фильтруем, чтобы не удалить сам воркспейс
+        const toDelete = descendants.filter(d => d._id !== workspaceId);
+        await db.database.batchModifyDocs({ upsert: [], remove: toDelete });
       },
     },
     export: {

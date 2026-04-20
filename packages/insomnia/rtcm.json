@@ -1,0 +1,79 @@
+{
+    "_type": "export",
+    "__export_format": 4,
+    "__export_date": "2024-04-20T11:00:00.000Z",
+    "__export_source": "insomnia.desktop.app:v12.5.0",
+    "resources": [
+        {
+            "_id": "fld_prod",
+            "parentId": "wrk_scratchpad",
+            "modified": 1713610800000,
+            "created": 1713610800000,
+            "name": "PROD",
+            "description": "",
+            "environment": {},
+            "environmentPropertyOrder": null,
+            "metaSortKey": -1000,
+            "_type": "request_group"
+        },
+        {
+            "_id": "fld_rtcm",
+            "parentId": "fld_prod",
+            "name": "RTCM",
+            "_type": "request_group"
+        },
+        {
+            "_id": "fld_backends",
+            "parentId": "fld_rtcm",
+            "name": "Backends",
+            "_type": "request_group"
+        },
+        {
+            "_id": "fld_cache",
+            "parentId": "fld_backends",
+            "name": "cache",
+            "_type": "request_group"
+        },
+        {
+            "_id": "req_get_cache",
+            "parentId": "fld_cache",
+            "name": "/cache - get all caches",
+            "method": "GET",
+            "url": "{{base_url}}/cache",
+            "_type": "request"
+        },
+        {
+            "_id": "req_delete_cache",
+            "parentId": "fld_cache",
+            "name": "!!!! delete caches2 !!!!",
+            "method": "DELETE",
+            "url": "{{base_url}}/cache",
+            "description": "ОПАСНО: Использование переменных окружения запрещено стандартом!",
+            "_type": "request"
+        },
+        {
+            "_id": "fld_promocodes",
+            "parentId": "fld_backends",
+            "name": "promocodes",
+            "_type": "request_group"
+        },
+        {
+            "_id": "fld_usercaches",
+            "parentId": "fld_rtcm",
+            "name": "Usercaches",
+            "_type": "request_group"
+        },
+        {
+            "_id": "fld_loader",
+            "parentId": "fld_rtcm",
+            "name": "Cache loader",
+            "_type": "request_group"
+        },
+        {
+            "_id": "fld_bre",
+            "parentId": "fld_rtcm",
+            "name": "BRE",
+            "_type": "request_group"
+        }
+    ]
+}

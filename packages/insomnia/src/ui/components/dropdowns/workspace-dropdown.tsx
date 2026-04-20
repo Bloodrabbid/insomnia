@@ -323,23 +323,25 @@ export const WorkspaceDropdown: FC<{}> = () => {
         },
       ],
     },
-    ...(actionPlugins.length > 0
-      ? [
-          {
-            name: 'Plugins',
-            id: 'plugins',
-            icon: 'plug' as IconName,
-            items: actionPlugins.map(plugin => ({
-              id: plugin.label,
-              name: plugin.label,
-              icon: <Icon icon={(plugin.icon as IconName) || 'plug'} />,
-              action: () => handlePluginClick(plugin, activeWorkspace),
-            })),
-          },
-        ]
-      : []),
   ];
-  const actionlist = isScratchpadWorkspace ? scratchpadActionList : workspaceActionsList;
+
+  const pluginSection = actionPlugins.length > 0
+    ? [
+      {
+        name: 'Plugins',
+        id: 'plugins',
+        icon: 'plug' as IconName,
+        items: actionPlugins.map(plugin => ({
+          id: plugin.label,
+          name: plugin.label,
+          icon: <Icon icon={(plugin.icon as IconName) || 'plug'} />,
+          action: () => handlePluginClick(plugin, activeWorkspace),
+        })),
+      },
+    ]
+    : [];
+
+  const actionlist = isScratchpadWorkspace ? [...scratchpadActionList, ...pluginSection] : [...workspaceActionsList, ...pluginSection];
   return (
     <>
       <MenuTrigger onOpenChange={isOpen => isOpen && handleDropdownOpen()}>
