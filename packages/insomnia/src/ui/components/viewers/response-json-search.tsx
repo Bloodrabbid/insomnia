@@ -111,6 +111,38 @@ export const ResponseJsonSearch: React.FC<Props> = ({ bodyStr, onApply, onClose 
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
+  const renderPathSegments = (fullPath: string) => {
+    // Split by dots and brackets but keep brackets in the name
+    // e.g. "offers[0].tagData" -> ["offers[0]", "tagData"]
+    const parts = fullPath.split(/\.(?![^\[]*\])/); 
+    let currentPath = '';
+
+    return (
+      <span className="json-search__path" title={fullPath}>
+        {parts.map((part, idx) => {
+          currentPath = currentPath ? `${currentPath}.${part}` : part;
+          const thisPath = currentPath;
+          const isSel = selected.has(thisPath);
+          return (
+            <React.Fragment key={idx}>
+              {idx > 0 && <span className="faint" style={{ margin: '0 2px' }}>.</span>}
+              <span 
+                className={`json-search__segment${isSel ? ' json-search__segment--active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggle(thisPath);
+                }}
+                title={`Select entire "${thisPath}"`}
+              >
+                {part}
+              </span>
+            </React.Fragment>
+          );
+        })}
+      </span>
+    );
+  };
+
   if (!parsed) {
     return (
       <div className="json-search json-search--error">
@@ -159,7 +191,7 @@ export const ResponseJsonSearch: React.FC<Props> = ({ bodyStr, onApply, onClose 
                   className={`json-search__item${active ? ' json-search__item--selected' : ''}`}
                   onClick={() => toggle(path)}
                 >
-                  <span className="json-search__path">{path || '(root)'}</span>
+                  {renderPathSegments(path)}
                   <span className="json-search__value">{preview(value)}</span>
                   {active && <i className="fa fa-check json-search__check" />}
                 </li>

@@ -3677,3 +3677,21 @@ input.editable {
 .json-filter-chip--disabled:hover {
   opacity: 0.8;
 }
+
+/* Сегменты пути в поиске */
+.json-search__segment {
+  cursor: pointer;
+  padding: 0 2px;
+  border-radius: 2px;
+  transition: all 0.1s;
+  display: inline-block;
+}
+.json-search__segment:hover {
+  background: var(--hl-md);
+  color: var(--color-surprise);
+  text-decoration: underline;
+}
+.json-search__segment--active {
+  color: var(--color-surprise);
+  font-weight: bold;
+}
