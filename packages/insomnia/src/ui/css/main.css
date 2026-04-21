@@ -3529,8 +3529,8 @@ input.editable {
 .json-search__path {
   font-family: var(--font-monospace);
   color: var(--color-font);
-  flex-shrink: 0;
-  max-width: 55%;
+  flex: 3;
+  max-width: 85%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3542,6 +3542,8 @@ input.editable {
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+  text-align: right;
+  opacity: 0.7;
 }
 .json-search__check {
   color: var(--color-surprise);
