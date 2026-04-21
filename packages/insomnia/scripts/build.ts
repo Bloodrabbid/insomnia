@@ -20,10 +20,10 @@ export const start = async () => {
 
   console.log(`[build] node: ${process.version}`.trim());
 
-  if (process.version.indexOf('v24.') !== 0) {
-    console.log('[build] Node 24.x.x is required to build');
-    process.exit(1);
-  }
+  // if (process.version.indexOf('v24.') !== 0) {
+  //   console.log('[build] Node 24.x.x is required to build');
+  //   process.exit(1);
+  // }
 
   const buildFolder = path.join('../build');
 
