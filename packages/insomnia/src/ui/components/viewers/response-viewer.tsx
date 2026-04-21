@@ -1,6 +1,6 @@
 import iconv from 'iconv-lite';
 import { Fragment, useCallback, useRef, useState } from 'react';
-import { ResponseJsonSearch } from './response-json-search';
+import { buildFilteredJson, ResponseJsonSearch } from './response-json-search';
 
 import { SegmentEvent } from '~/ui/analytics';
 import { CodeEditor, type CodeEditorHandle } from '~/ui/components/.client/codemirror/code-editor';
@@ -77,7 +77,7 @@ export const ResponseViewer = ({
   const [blockingBecauseTooLarge, setBlockingBecauseTooLarge] = useState(!alwaysShowLargeResponses && largeResponse);
   const [parseError, setParseError] = useState('');
   const [showJsonSearch, setShowJsonSearch] = useState(false);
-  const [filteredBodyStr, setFilteredBodyStr] = useState<string | null>(null);
+  const [activeFilters, setActiveFilters] = useState<Array<{ id: string; label: string; paths: Set<string> }>>([]);
 
   const [overSizedBody, setOversizedBody] = useState<Buffer | null>(bodyBuffer || null);
 
@@ -229,48 +229,80 @@ export const ResponseViewer = ({
     try {
       bodyStr = unescapeForwardSlash(bodyStr);
     } catch {}
-    const displayStr = filteredBodyStr ?? bodyStr;
+
+    const hasFilters = activeFilters.length > 0;
+    let displayStr = bodyStr;
+
+    if (hasFilters) {
+      try {
+        const parsed = JSON.parse(bodyStr);
+        const unionPaths = new Set<string>();
+        activeFilters.forEach(f => f.paths.forEach(p => unionPaths.add(p)));
+        const filtered = buildFilteredJson(parsed, unionPaths);
+        displayStr = JSON.stringify(filtered, null, 2);
+      } catch (e) {
+        console.warn('Failed to apply filters', e);
+      }
+    }
+
     return (
       <div className="json-viewer-wrapper tall flex-column">
         <div className="json-viewer-toolbar">
           <button
             className={`btn btn--super-compact json-search-toggle${showJsonSearch ? ' json-search-toggle--active' : ''}`}
-            title="Search & filter JSON"
+            title="Add a new filter"
             onClick={() => setShowJsonSearch(s => !s)}
           >
-            <i className="fa fa-search" /> Search
+            <i className="fa fa-plus-circle" /> Add Filter
           </button>
-          {filteredBodyStr && (
-            <span className="json-filter-badge">
-              <i className="fa fa-filter" /> Filtered
+          
+          {hasFilters && (
+            <div className="json-filters-container">
               <button
-                className="btn btn--super-compact json-filter-badge__reset"
-                title="Reset to original response"
-                onClick={() => { setFilteredBodyStr(null); }}
+                className="btn btn--super-compact json-filters-clear"
+                onClick={() => setActiveFilters([])}
               >
-                ✕ Reset
+                <i className="fa fa-times" /> Очистить все
               </button>
-            </span>
+              {activeFilters.map(filter => (
+                <span key={filter.id} className="json-filter-chip">
+                  {filter.label}
+                  <button
+                    className="json-filter-chip__remove"
+                    onClick={() => setActiveFilters(prev => prev.filter(f => f.id !== filter.id))}
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </div>
           )}
         </div>
+
         {showJsonSearch && (
           <ResponseJsonSearch
             bodyStr={bodyStr}
-            onApply={filtered => {
-              setFilteredBodyStr(filtered);
+            onApply={(paths, label) => {
+              const newFilter = {
+                id: Math.random().toString(36).substr(2, 9),
+                label,
+                paths,
+              };
+              setActiveFilters(prev => [...prev, newFilter]);
               setShowJsonSearch(false);
             }}
-            onClose={() => setShowJsonSearch(false)}
+            onClose={() => setShowJsonSearch(s => !s)}
           />
         )}
+
         <CodeEditor
           id="json-response-viewer"
-          key={`${responseId}-json-${filteredBodyStr ? 'filtered' : 'full'}`}
+          key={`${responseId}-json-${activeFilters.length}`}
           ref={editorRef}
           autoPrettify
           defaultValue={displayStr}
-          filter={filteredBodyStr ? '' : filter}
-          filterHistory={filteredBodyStr ? [] : filterHistory}
+          filter={hasFilters ? '' : filter}
+          filterHistory={hasFilters ? [] : filterHistory}
           mode={contentType}
           noMatchBrackets
           onClickLink={url =>
@@ -279,8 +311,8 @@ export const ResponseViewer = ({
           }
           placeholder="..."
           readOnly
-          uniquenessKey={`${responseId}-${filteredBodyStr ? 'f' : 'o'}`}
-          updateFilter={filteredBodyStr ? undefined : filter => {
+          uniquenessKey={`${responseId}-${activeFilters.length}`}
+          updateFilter={hasFilters ? undefined : filter => {
             updateFilter?.(filter);
             if (filter) {
               window.main.trackSegmentEvent({
@@ -291,7 +323,6 @@ export const ResponseViewer = ({
         />
       </div>
     );
-  }
 
   if (previewMode === PREVIEW_MODE_FRIENDLY && contentType.indexOf('image/') === 0) {
     const justContentType = contentType.split(';')[0];

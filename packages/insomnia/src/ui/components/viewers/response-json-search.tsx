@@ -2,25 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-function collectPaths(
-  value: unknown,
-  path: string,
-  results: Array<{ path: string; value: unknown }>,
-) {
-  if (value === null || typeof value !== 'object') {
-    results.push({ path, value });
-    return;
-  }
-  if (Array.isArray(value)) {
-    value.forEach((item, i) => collectPaths(item, `${path}[${i}]`, results));
-  } else {
-    Object.entries(value as Record<string, unknown>).forEach(([k, v]) =>
-      collectPaths(v, path ? `${path}.${k}` : k, results),
-    );
-  }
-}
-
-function buildFilteredJson(original: unknown, paths: Set<string>): unknown {
+export function buildFilteredJson(original: unknown, paths: Set<string>): unknown {
   const result: Record<string, unknown> = {};
   for (const path of paths) {
     const tokens = path.replace(/\[(\d+)\]/g, '.$1').split('.');
@@ -44,6 +26,24 @@ function buildFilteredJson(original: unknown, paths: Set<string>): unknown {
   return result;
 }
 
+function collectPaths(
+  value: unknown,
+  path: string,
+  results: Array<{ path: string; value: unknown }>,
+) {
+  if (value === null || typeof value !== 'object') {
+    results.push({ path, value });
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, i) => collectPaths(item, `${path}[${i}]`, results));
+  } else {
+    Object.entries(value as Record<string, unknown>).forEach(([k, v]) =>
+      collectPaths(v, path ? `${path}.${k}` : k, results),
+    );
+  }
+}
+
 function preview(value: unknown): string {
   if (value === null) return 'null';
   if (typeof value === 'string')
@@ -58,7 +58,7 @@ interface Hit { path: string; value: unknown }
 
 interface Props {
   bodyStr: string;
-  onApply: (filteredJson: string) => void;
+  onApply: (paths: Set<string>, label: string) => void;
   onClose: () => void;
 }
 
@@ -102,9 +102,8 @@ export const ResponseJsonSearch: React.FC<Props> = ({ bodyStr, onApply, onClose 
 
   const applyFilter = useCallback(() => {
     if (!parsed || selected.size === 0) return;
-    const filtered = buildFilteredJson(parsed, selected);
-    onApply(JSON.stringify(filtered, null, 2));
-  }, [parsed, selected, onApply]);
+    onApply(selected, query.trim() || 'Custom filter');
+  }, [parsed, selected, query, onApply]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -146,9 +145,9 @@ export const ResponseJsonSearch: React.FC<Props> = ({ bodyStr, onApply, onClose 
               className="btn btn--super-compact btn--outlined"
               disabled={selected.size === 0}
               onClick={applyFilter}
-              title="Show only selected paths in the response viewer"
+              title="Add these paths as a new filter chip"
             >
-              <i className="fa fa-filter" /> Apply ({selected.size})
+              <i className="fa fa-plus-circle" /> Add filter ({selected.size})
             </button>
           </div>
           <ul className="json-search__list">
