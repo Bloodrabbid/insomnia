@@ -111,9 +111,23 @@ export const ResponseJsonSearch: React.FC<Props> = ({ bodyStr, onApply, onClose 
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
+  const findBestParent = (fullPath: string) => {
+    // Try to find the nearest array element [N] or the immediate parent object
+    const lastBracketIdx = fullPath.lastIndexOf('[');
+    if (lastBracketIdx !== -1) {
+      const closingIdx = fullPath.indexOf(']', lastBracketIdx);
+      if (closingIdx !== -1) {
+        return fullPath.substring(0, closingIdx + 1);
+      }
+    }
+    const lastDotIdx = fullPath.lastIndexOf('.');
+    if (lastDotIdx !== -1) {
+      return fullPath.substring(0, lastDotIdx);
+    }
+    return fullPath;
+  };
+
   const renderPathSegments = (fullPath: string) => {
-    // Split by dots and brackets but keep brackets in the name
-    // e.g. "offers[0].tagData" -> ["offers[0]", "tagData"]
     const parts = fullPath.split(/\.(?![^\[]*\])/); 
     let currentPath = '';
 
@@ -123,11 +137,12 @@ export const ResponseJsonSearch: React.FC<Props> = ({ bodyStr, onApply, onClose 
           currentPath = currentPath ? `${currentPath}.${part}` : part;
           const thisPath = currentPath;
           const isSel = selected.has(thisPath);
+          const isArrayItem = part.includes('[');
           return (
             <React.Fragment key={idx}>
               {idx > 0 && <span className="faint" style={{ margin: '0 2px' }}>.</span>}
               <span 
-                className={`json-search__segment${isSel ? ' json-search__segment--active' : ''}`}
+                className={`json-search__segment${isSel ? ' json-search__segment--active' : ''}${isArrayItem ? ' json-search__segment--array' : ''}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   toggle(thisPath);
@@ -185,15 +200,32 @@ export const ResponseJsonSearch: React.FC<Props> = ({ bodyStr, onApply, onClose 
           <ul className="json-search__list">
             {hits.map(({ path, value }) => {
               const active = selected.has(path);
+              const parentPath = findBestParent(path);
+              const isParentSel = selected.has(parentPath);
+              
               return (
                 <li
                   key={path}
                   className={`json-search__item${active ? ' json-search__item--selected' : ''}`}
                   onClick={() => toggle(path)}
                 >
-                  {renderPathSegments(path)}
-                  <span className="json-search__value">{preview(value)}</span>
-                  {active && <i className="fa fa-check json-search__check" />}
+                  <div className="json-search__item-main">
+                    {renderPathSegments(path)}
+                    <span className="json-search__value">{preview(value)}</span>
+                  </div>
+                  <div className="json-search__item-actions">
+                    <button
+                      className={`btn btn--super-compact json-search__target-btn${isParentSel ? ' json-search__target-btn--active' : ''}`}
+                      title={`Select containing block: ${parentPath}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggle(parentPath);
+                      }}
+                    >
+                      <i className="fa fa-crosshairs" />
+                    </button>
+                    {active && <i className="fa fa-check json-search__check" />}
+                  </div>
                 </li>
               );
             })}

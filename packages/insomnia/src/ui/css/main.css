@@ -3697,3 +3697,50 @@ input.editable {
   color: var(--color-surprise);
   font-weight: bold;
 }
+
+/* Стили для элементов списка поиска */
+.json-search__item {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+}
+.json-search__item-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  overflow: hidden;
+}
+.json-search__item-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 12px;
+}
+
+/* Кнопка "Прицел" (выбор родителя) */
+.json-search__target-btn {
+  opacity: 0.4;
+  transition: all 0.2s;
+  background: transparent !important;
+  border: none !important;
+  color: var(--color-font) !important;
+}
+.json-search__item:hover .json-search__target-btn {
+  opacity: 1;
+}
+.json-search__target-btn:hover {
+  color: var(--color-surprise) !important;
+  transform: scale(1.2);
+}
+.json-search__target-btn--active {
+  opacity: 1 !important;
+  color: var(--color-surprise) !important;
+}
+
+/* Подсветка элементов массива в крошках */
+.json-search__segment--array {
+  color: var(--color-warning);
+  font-weight: bold;
+}
