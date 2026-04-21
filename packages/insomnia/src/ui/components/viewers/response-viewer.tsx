@@ -77,6 +77,7 @@ export const ResponseViewer = ({
   const [blockingBecauseTooLarge, setBlockingBecauseTooLarge] = useState(!alwaysShowLargeResponses && largeResponse);
   const [parseError, setParseError] = useState('');
   const [showJsonSearch, setShowJsonSearch] = useState(false);
+  const [filteredBodyStr, setFilteredBodyStr] = useState<string | null>(null);
 
   const [overSizedBody, setOversizedBody] = useState<Buffer | null>(bodyBuffer || null);
 
@@ -228,6 +229,7 @@ export const ResponseViewer = ({
     try {
       bodyStr = unescapeForwardSlash(bodyStr);
     } catch {}
+    const displayStr = filteredBodyStr ?? bodyStr;
     return (
       <div className="json-viewer-wrapper tall flex-column">
         <div className="json-viewer-toolbar">
@@ -238,21 +240,37 @@ export const ResponseViewer = ({
           >
             <i className="fa fa-search" /> Search
           </button>
+          {filteredBodyStr && (
+            <span className="json-filter-badge">
+              <i className="fa fa-filter" /> Filtered
+              <button
+                className="btn btn--super-compact json-filter-badge__reset"
+                title="Reset to original response"
+                onClick={() => { setFilteredBodyStr(null); }}
+              >
+                ✕ Reset
+              </button>
+            </span>
+          )}
         </div>
         {showJsonSearch && (
           <ResponseJsonSearch
             bodyStr={bodyStr}
+            onApply={filtered => {
+              setFilteredBodyStr(filtered);
+              setShowJsonSearch(false);
+            }}
             onClose={() => setShowJsonSearch(false)}
           />
         )}
         <CodeEditor
           id="json-response-viewer"
-          key={`${responseId}-json`}
+          key={`${responseId}-json-${filteredBodyStr ? 'filtered' : 'full'}`}
           ref={editorRef}
           autoPrettify
-          defaultValue={bodyStr}
-          filter={filter}
-          filterHistory={filterHistory}
+          defaultValue={displayStr}
+          filter={filteredBodyStr ? '' : filter}
+          filterHistory={filteredBodyStr ? [] : filterHistory}
           mode={contentType}
           noMatchBrackets
           onClickLink={url =>
@@ -261,10 +279,9 @@ export const ResponseViewer = ({
           }
           placeholder="..."
           readOnly
-          uniquenessKey={responseId}
-          updateFilter={filter => {
+          uniquenessKey={`${responseId}-${filteredBodyStr ? 'f' : 'o'}`}
+          updateFilter={filteredBodyStr ? undefined : filter => {
             updateFilter?.(filter);
-
             if (filter) {
               window.main.trackSegmentEvent({
                 event: SegmentEvent.filterCreatedResponseBody,
