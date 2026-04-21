@@ -22,7 +22,7 @@ function GitlabConfigForm({ context }) {
     const [token, setToken] = React.useState('');
     const [projectId, setProjectId] = React.useState('');
     const [branch, setBranch] = React.useState('main');
-    const [configFileName, setConfigFileName] = React.useState('insomnia.json');
+    const [configFileName, setConfigFileName] = React.useState('insomnia-sync.yaml');
     const [clearBeforeImport, setClearBeforeImport] = React.useState(false);
     const [loading, setLoading] = React.useState(true);
 
@@ -81,7 +81,7 @@ function GitlabConfigForm({ context }) {
                 </label>
                 <label>
                     Workspace File Name (in repo):
-                    <input type="text" placeholder="insomnia.json" value={configFileName} onChange={e => setConfigFileName(e.target.value)} />
+                    <input type="text" placeholder="insomnia-sync.yaml" value={configFileName} onChange={e => setConfigFileName(e.target.value)} />
                 </label>
             </div>
             

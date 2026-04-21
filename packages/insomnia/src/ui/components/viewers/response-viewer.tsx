@@ -1,5 +1,6 @@
 import iconv from 'iconv-lite';
 import { Fragment, useCallback, useRef, useState } from 'react';
+import { ResponseJsonSearch } from './response-json-search';
 
 import { SegmentEvent } from '~/ui/analytics';
 import { CodeEditor, type CodeEditorHandle } from '~/ui/components/.client/codemirror/code-editor';
@@ -75,6 +76,7 @@ export const ResponseViewer = ({
   const hugeResponse = bytes > HUGE_RESPONSE_MB * 1024 * 1024;
   const [blockingBecauseTooLarge, setBlockingBecauseTooLarge] = useState(!alwaysShowLargeResponses && largeResponse);
   const [parseError, setParseError] = useState('');
+  const [showJsonSearch, setShowJsonSearch] = useState(false);
 
   const [overSizedBody, setOversizedBody] = useState<Buffer | null>(bodyBuffer || null);
 
@@ -227,33 +229,50 @@ export const ResponseViewer = ({
       bodyStr = unescapeForwardSlash(bodyStr);
     } catch {}
     return (
-      <CodeEditor
-        id="json-response-viewer"
-        key={`${responseId}-json`}
-        ref={editorRef}
-        autoPrettify
-        defaultValue={bodyStr}
-        filter={filter}
-        filterHistory={filterHistory}
-        mode={contentType}
-        noMatchBrackets
-        onClickLink={url =>
-          !disablePreviewLinks &&
-          window.main.openInBrowser(getBodyAsString()?.match(/^\s*<\?xml [^?]*\?>/) ? xmlDecode(url) : url)
-        }
-        placeholder="..."
-        readOnly
-        uniquenessKey={responseId}
-        updateFilter={filter => {
-          updateFilter?.(filter);
-
-          if (filter) {
-            window.main.trackSegmentEvent({
-              event: SegmentEvent.filterCreatedResponseBody,
-            });
+      <div className="json-viewer-wrapper tall flex-column">
+        <div className="json-viewer-toolbar">
+          <button
+            className={`btn btn--super-compact json-search-toggle${showJsonSearch ? ' json-search-toggle--active' : ''}`}
+            title="Search & filter JSON"
+            onClick={() => setShowJsonSearch(s => !s)}
+          >
+            <i className="fa fa-search" /> Search
+          </button>
+        </div>
+        {showJsonSearch && (
+          <ResponseJsonSearch
+            bodyStr={bodyStr}
+            onClose={() => setShowJsonSearch(false)}
+          />
+        )}
+        <CodeEditor
+          id="json-response-viewer"
+          key={`${responseId}-json`}
+          ref={editorRef}
+          autoPrettify
+          defaultValue={bodyStr}
+          filter={filter}
+          filterHistory={filterHistory}
+          mode={contentType}
+          noMatchBrackets
+          onClickLink={url =>
+            !disablePreviewLinks &&
+            window.main.openInBrowser(getBodyAsString()?.match(/^\s*<\?xml [^?]*\?>/) ? xmlDecode(url) : url)
           }
-        }}
-      />
+          placeholder="..."
+          readOnly
+          uniquenessKey={responseId}
+          updateFilter={filter => {
+            updateFilter?.(filter);
+
+            if (filter) {
+              window.main.trackSegmentEvent({
+                event: SegmentEvent.filterCreatedResponseBody,
+              });
+            }
+          }}
+        />
+      </div>
     );
   }
 
