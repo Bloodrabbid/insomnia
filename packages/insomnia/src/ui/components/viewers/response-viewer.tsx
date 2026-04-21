@@ -77,7 +77,7 @@ export const ResponseViewer = ({
   const [blockingBecauseTooLarge, setBlockingBecauseTooLarge] = useState(!alwaysShowLargeResponses && largeResponse);
   const [parseError, setParseError] = useState('');
   const [showJsonSearch, setShowJsonSearch] = useState(false);
-  const [activeFilters, setActiveFilters] = useState<Array<{ id: string; label: string; paths: Set<string> }>>([]);
+  const [activeFilters, setActiveFilters] = useState<Array<{ id: string; label: string; paths: Set<string>; enabled?: boolean }>>([]);
 
   const [overSizedBody, setOversizedBody] = useState<Buffer | null>(bodyBuffer || null);
 
@@ -237,7 +237,11 @@ export const ResponseViewer = ({
       try {
         const parsed = JSON.parse(bodyStr);
         const unionPaths = new Set<string>();
-        activeFilters.forEach(f => f.paths.forEach(p => unionPaths.add(p)));
+        activeFilters.forEach(f => {
+          if (f.enabled !== false) {
+            f.paths.forEach(p => unionPaths.add(p));
+          }
+        });
         const filtered = buildFilteredJson(parsed, unionPaths);
         displayStr = JSON.stringify(filtered, null, 2);
       } catch (e) {
@@ -265,11 +269,20 @@ export const ResponseViewer = ({
                 <i className="fa fa-times" /> Очистить все
               </button>
               {activeFilters.map(filter => (
-                <span key={filter.id} className="json-filter-chip">
+                <span 
+                  key={filter.id} 
+                  className={`json-filter-chip${filter.enabled === false ? ' json-filter-chip--disabled' : ''}`}
+                  title={filter.enabled === false ? 'Click to enable' : 'Click to disable'}
+                  onClick={() => setActiveFilters(prev => prev.map(f => f.id === filter.id ? { ...f, enabled: !f.enabled } : f))}
+                >
+                  <i className={`fa fa-${filter.enabled === false ? 'circle-o' : 'check-circle'}`} style={{ marginRight: '4px', opacity: 0.7 }} />
                   {filter.label}
                   <button
                     className="json-filter-chip__remove"
-                    onClick={() => setActiveFilters(prev => prev.filter(f => f.id !== filter.id))}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveFilters(prev => prev.filter(f => f.id !== filter.id));
+                    }}
                   >
                     ✕
                   </button>
@@ -287,6 +300,7 @@ export const ResponseViewer = ({
                 id: Math.random().toString(36).substr(2, 9),
                 label,
                 paths,
+                enabled: true,
               };
               setActiveFilters(prev => [...prev, newFilter]);
               setShowJsonSearch(false);

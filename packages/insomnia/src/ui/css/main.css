@@ -3665,3 +3665,15 @@ input.editable {
 .json-filter-chip__remove:hover {
   background: rgba(255, 255, 255, 0.4);
 }
+
+/* Выключенный чип */
+.json-filter-chip--disabled {
+  background: var(--hl-md) !important;
+  color: var(--color-font) !important;
+  opacity: 0.6;
+  text-decoration: line-through;
+  cursor: pointer;
+}
+.json-filter-chip--disabled:hover {
+  opacity: 0.8;
+}
