@@ -323,6 +323,7 @@ export const ResponseViewer = ({
         />
       </div>
     );
+  }
 
   if (previewMode === PREVIEW_MODE_FRIENDLY && contentType.indexOf('image/') === 0) {
     const justContentType = contentType.split(';')[0];
