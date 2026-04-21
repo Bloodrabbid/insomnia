@@ -97,7 +97,9 @@ export const ResponseJsonSearch: React.FC<Props> = ({ bodyStr, onApply, onClose 
     });
   }, []);
 
-  const selectAll = useCallback(() => setSelected(new Set(hits.map(h => h.path))), [hits]);
+  const selectAll = useCallback(() => {
+    setSelected(new Set(hits.map(h => findBestParent(h.path))));
+  }, [hits]);
   const clearSel  = useCallback(() => setSelected(new Set()), []);
 
   const applyFilter = useCallback(() => {
@@ -199,32 +201,24 @@ export const ResponseJsonSearch: React.FC<Props> = ({ bodyStr, onApply, onClose 
           </div>
           <ul className="json-search__list">
             {hits.map(({ path, value }) => {
-              const active = selected.has(path);
               const parentPath = findBestParent(path);
               const isParentSel = selected.has(parentPath);
+              const isLeafSel = selected.has(path);
               
               return (
                 <li
                   key={path}
-                  className={`json-search__item${active ? ' json-search__item--selected' : ''}`}
-                  onClick={() => toggle(path)}
+                  className={`json-search__item${isParentSel ? ' json-search__item--selected' : ''}`}
+                  onClick={() => toggle(parentPath)}
+                  title={`Click to select entire block: ${parentPath}`}
                 >
                   <div className="json-search__item-main">
                     {renderPathSegments(path)}
                     <span className="json-search__value">{preview(value)}</span>
                   </div>
                   <div className="json-search__item-actions">
-                    <button
-                      className={`btn btn--super-compact json-search__target-btn${isParentSel ? ' json-search__target-btn--active' : ''}`}
-                      title={`Select containing block: ${parentPath}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggle(parentPath);
-                      }}
-                    >
-                      <i className="fa fa-crosshairs" />
-                    </button>
-                    {active && <i className="fa fa-check json-search__check" />}
+                    {isParentSel && !isLeafSel && <i className="fa fa-crosshairs json-search__check" title="Parent block selected" />}
+                    {isLeafSel && <i className="fa fa-check json-search__check" title="Specific field selected" />}
                   </div>
                 </li>
               );
