@@ -230,6 +230,7 @@ export const ResponseViewer = ({
       bodyStr = unescapeForwardSlash(bodyStr);
     } catch {}
 
+    const hasFilters = activeFilters.length > 0;
     const enabledFilters = activeFilters.filter(f => f.enabled !== false);
     const hasActiveFilters = enabledFilters.length > 0;
     let displayStr = bodyStr;
