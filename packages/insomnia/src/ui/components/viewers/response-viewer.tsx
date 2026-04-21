@@ -311,7 +311,7 @@ export const ResponseViewer = ({
 
         <CodeEditor
           id="json-response-viewer"
-          key={`${responseId}-json-${activeFilters.length}`}
+          key={`${responseId}-json-${activeFilters.length}-${activeFilters.map(f => f.enabled ? '1' : '0').join('')}`}
           ref={editorRef}
           autoPrettify
           defaultValue={displayStr}
@@ -325,7 +325,7 @@ export const ResponseViewer = ({
           }
           placeholder="..."
           readOnly
-          uniquenessKey={`${responseId}-${activeFilters.length}`}
+          uniquenessKey={`${responseId}-${activeFilters.length}-${activeFilters.map(f => f.enabled ? '1' : '0').join('')}`}
           updateFilter={hasFilters ? undefined : filter => {
             updateFilter?.(filter);
             if (filter) {
