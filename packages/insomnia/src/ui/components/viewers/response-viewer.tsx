@@ -230,18 +230,15 @@ export const ResponseViewer = ({
       bodyStr = unescapeForwardSlash(bodyStr);
     } catch {}
 
-    const hasFilters = activeFilters.length > 0;
+    const enabledFilters = activeFilters.filter(f => f.enabled !== false);
+    const hasActiveFilters = enabledFilters.length > 0;
     let displayStr = bodyStr;
 
-    if (hasFilters) {
+    if (hasActiveFilters) {
       try {
         const parsed = JSON.parse(bodyStr);
         const unionPaths = new Set<string>();
-        activeFilters.forEach(f => {
-          if (f.enabled !== false) {
-            f.paths.forEach(p => unionPaths.add(p));
-          }
-        });
+        enabledFilters.forEach(f => f.paths.forEach(p => unionPaths.add(p)));
         const filtered = buildFilteredJson(parsed, unionPaths);
         displayStr = JSON.stringify(filtered, null, 2);
       } catch (e) {
@@ -315,8 +312,8 @@ export const ResponseViewer = ({
           ref={editorRef}
           autoPrettify
           defaultValue={displayStr}
-          filter={hasFilters ? '' : filter}
-          filterHistory={hasFilters ? [] : filterHistory}
+          filter={hasActiveFilters ? '' : filter}
+          filterHistory={hasActiveFilters ? [] : filterHistory}
           mode={contentType}
           noMatchBrackets
           onClickLink={url =>
@@ -326,7 +323,7 @@ export const ResponseViewer = ({
           placeholder="..."
           readOnly
           uniquenessKey={`${responseId}-${activeFilters.length}-${activeFilters.map(f => f.enabled ? '1' : '0').join('')}`}
-          updateFilter={hasFilters ? undefined : filter => {
+          updateFilter={hasActiveFilters ? undefined : filter => {
             updateFilter?.(filter);
             if (filter) {
               window.main.trackSegmentEvent({
