@@ -313,10 +313,6 @@ export const CodeEditor = memo(
       const persistState = useCallback(() => {
         if (uniquenessKey && codeMirror.current) {
           const scrollInfo = codeMirror.current.getScrollInfo();
-          // ignore invalid scroll positions
-          if (scrollInfo.height <= 0 || scrollInfo.width <= 0) {
-            return;
-          }
           editorStates[uniquenessKey] = {
             scroll: scrollInfo,
             selections: codeMirror.current.listSelections(),

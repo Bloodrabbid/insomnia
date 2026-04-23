@@ -1,6 +1,5 @@
 import iconv from 'iconv-lite';
-import { Fragment, useCallback, useRef, useState } from 'react';
-import { buildFilteredJson, ResponseJsonSearch } from './response-json-search';
+import { Fragment, useCallback, useMemo, useRef, useState } from 'react';
 
 import { SegmentEvent } from '~/ui/analytics';
 import { CodeEditor, type CodeEditorHandle } from '~/ui/components/.client/codemirror/code-editor';
@@ -15,6 +14,7 @@ import { unescapeForwardSlash } from '../../../common/misc';
 import { useDocBodyKeyboardShortcuts } from '../keydown-binder';
 import { ResponseCSVViewer } from './response-csv-viewer';
 import { ResponseErrorViewer } from './response-error-viewer';
+import { buildFilteredJson, ResponseJsonSearch } from './response-json-search';
 import { ResponseMultipartViewer } from './response-multipart-viewer';
 import { ResponsePDFViewer } from './response-pdf-viewer';
 import { ResponseWebView } from './response-web-view';
@@ -37,6 +37,9 @@ export function xmlDecode(input: string) {
     (_: string, item: keyof typeof ESCAPED_CHARACTERS_MAP) => ESCAPED_CHARACTERS_MAP[item],
   );
 }
+interface ActiveFilter { id: string; label: string; paths: Set<string>; enabled?: boolean }
+interface ActiveFilterProp { id: string; label: string; paths: string[]; enabled?: boolean }
+
 export interface ResponseViewerProps {
   bytes: number;
   contentType: string;
@@ -52,6 +55,8 @@ export interface ResponseViewerProps {
   responseId: string;
   url: string;
   updateFilter?: (filter: string) => void;
+  activeFilters?: ActiveFilterProp[];
+  updateActiveFilters?: (filters: ActiveFilterProp[]) => void;
   error?: string | null;
 }
 
@@ -70,6 +75,8 @@ export const ResponseViewer = ({
   previewMode,
   responseId,
   updateFilter,
+  activeFilters: activeFiltersProp = [],
+  updateActiveFilters,
   url,
 }: ResponseViewerProps) => {
   const largeResponse = bytes > LARGE_RESPONSE_MB * 1024 * 1024;
@@ -77,7 +84,14 @@ export const ResponseViewer = ({
   const [blockingBecauseTooLarge, setBlockingBecauseTooLarge] = useState(!alwaysShowLargeResponses && largeResponse);
   const [parseError, setParseError] = useState('');
   const [showJsonSearch, setShowJsonSearch] = useState(false);
-  const [activeFilters, setActiveFilters] = useState<Array<{ id: string; label: string; paths: Set<string>; enabled?: boolean }>>([]);
+  const activeFilters = useMemo<ActiveFilter[]>(() => {
+    return activeFiltersProp.map(f => ({ ...f, paths: new Set(f.paths) }));
+  }, [activeFiltersProp]);
+
+  const setActiveFilters = useCallback((updater: ActiveFilter[] | ((prev: ActiveFilter[]) => ActiveFilter[])) => {
+    const next = typeof updater === 'function' ? updater(activeFilters) : updater;
+    updateActiveFilters?.(next.map(f => ({ ...f, paths: Array.from(f.paths) })));
+  }, [activeFilters, updateActiveFilters]);
 
   const [overSizedBody, setOversizedBody] = useState<Buffer | null>(bodyBuffer || null);
 
@@ -231,7 +245,7 @@ export const ResponseViewer = ({
     } catch {}
 
     const hasFilters = activeFilters.length > 0;
-    const enabledFilters = activeFilters.filter(f => f.enabled !== false);
+    const enabledFilters = activeFilters.filter((f: ActiveFilter) => f.enabled !== false);
     const hasActiveFilters = enabledFilters.length > 0;
     let displayStr = bodyStr;
 
@@ -239,7 +253,7 @@ export const ResponseViewer = ({
       try {
         const parsed = JSON.parse(bodyStr);
         const unionPaths = new Set<string>();
-        enabledFilters.forEach(f => f.paths.forEach(p => unionPaths.add(p)));
+        enabledFilters.forEach((f: ActiveFilter) => f.paths.forEach((p: string) => unionPaths.add(p)));
         const filtered = buildFilteredJson(parsed, unionPaths);
         displayStr = JSON.stringify(filtered, null, 2);
       } catch (e) {
@@ -266,20 +280,20 @@ export const ResponseViewer = ({
               >
                 <i className="fa fa-times" /> Очистить все
               </button>
-              {activeFilters.map(filter => (
+              {activeFilters.map((filter: ActiveFilter) => (
                 <span 
                   key={filter.id} 
                   className={`json-filter-chip${filter.enabled === false ? ' json-filter-chip--disabled' : ''}`}
                   title={filter.enabled === false ? 'Click to enable' : 'Click to disable'}
-                  onClick={() => setActiveFilters(prev => prev.map(f => f.id === filter.id ? { ...f, enabled: !f.enabled } : f))}
+                  onClick={() => setActiveFilters(prev => prev.map((f: ActiveFilter) => f.id === filter.id ? { ...f, enabled: !f.enabled } : f))}
                 >
                   <i className={`fa fa-${filter.enabled === false ? 'circle-o' : 'check-circle'}`} style={{ marginRight: '4px', opacity: 0.7 }} />
                   {filter.label}
                   <button
                     className="json-filter-chip__remove"
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent) => {
                       e.stopPropagation();
-                      setActiveFilters(prev => prev.filter(f => f.id !== filter.id));
+                      setActiveFilters(prev => prev.filter((f: ActiveFilter) => f.id !== filter.id));
                     }}
                   >
                     ✕
@@ -295,7 +309,7 @@ export const ResponseViewer = ({
             bodyStr={bodyStr}
             onApply={(paths, label) => {
               const newFilter = {
-                id: Math.random().toString(36).substr(2, 9),
+                id: Math.random().toString(36).slice(2, 11),
                 label,
                 paths,
                 enabled: true,
@@ -309,7 +323,7 @@ export const ResponseViewer = ({
 
         <CodeEditor
           id="json-response-viewer"
-          key={`${responseId}-json-${activeFilters.length}-${activeFilters.map(f => f.enabled ? '1' : '0').join('')}`}
+          key={`${responseId}-json-${activeFilters.length}-${activeFilters.map((f: ActiveFilter) => f.enabled ? '1' : '0').join('')}`}
           ref={editorRef}
           autoPrettify
           defaultValue={displayStr}
@@ -323,8 +337,8 @@ export const ResponseViewer = ({
           }
           placeholder="..."
           readOnly
-          uniquenessKey={`${responseId}-${activeFilters.length}-${activeFilters.map(f => f.enabled ? '1' : '0').join('')}`}
-          updateFilter={hasActiveFilters ? undefined : filter => {
+          uniquenessKey={`${responseId}-${activeFilters.length}-${activeFilters.map((f: ActiveFilter) => f.enabled ? '1' : '0').join('')}`}
+          updateFilter={hasActiveFilters ? undefined : (filter: string) => {
             updateFilter?.(filter);
             if (filter) {
               window.main.trackSegmentEvent({
@@ -397,6 +411,8 @@ export const ResponseViewer = ({
         filterHistory={filterHistory}
         key={responseId}
         responseId={responseId}
+        activeFilters={activeFiltersProp}
+        updateActiveFilters={updateActiveFilters}
         url={url}
       />
     );

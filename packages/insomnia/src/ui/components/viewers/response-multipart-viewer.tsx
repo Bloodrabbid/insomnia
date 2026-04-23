@@ -23,6 +23,8 @@ interface Props {
   filter: string;
   filterHistory: string[];
   editorFontSize: number;
+  activeFilters?: { id: string; label: string; paths: string[]; enabled?: boolean }[];
+  updateActiveFilters?: (filters: { id: string; label: string; paths: string[]; enabled?: boolean }[]) => void;
   url: string;
 }
 
@@ -37,6 +39,8 @@ export const ResponseMultipartViewer: FC<Props> = ({
   url,
   bodyBuffer,
   contentType,
+  activeFilters,
+  updateActiveFilters,
 }) => {
   const [parts, setParts] = useState<Part[]>([]);
   const [selectedPart, setSelectedPart] = useState<Part>();
@@ -202,6 +206,8 @@ export const ResponseMultipartViewer: FC<Props> = ({
           key={`${responseId}::${selectedPart?.id}`}
           previewMode={PREVIEW_MODE_FRIENDLY}
           responseId={`${responseId}[${selectedPart?.id}]`}
+          activeFilters={activeFilters}
+          updateActiveFilters={updateActiveFilters}
           url={url}
         />
       </div>

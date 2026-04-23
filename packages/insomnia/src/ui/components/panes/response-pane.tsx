@@ -44,6 +44,14 @@ export const ResponsePane: FC<Props> = ({ activeRequestId }) => {
   const patchRequestMeta = useRequestMetaPatcher();
   const { settings } = useRootLoaderData()!;
   const previewMode = activeRequestMeta.previewMode || PREVIEW_MODE_SOURCE;
+  const activeFilters = activeRequestMeta.responseActiveFilters || [];
+  const handleSetActiveFilters = async (activeFilters: { id: string; label: string; paths: string[]; enabled?: boolean }[]) => {
+    if (!activeRequest) {
+      return;
+    }
+    await patchRequestMeta(activeRequest._id, { responseActiveFilters: activeFilters });
+  };
+
   const handleSetFilter = async (responseFilter: string) => {
     if (!activeResponse) {
       return;
@@ -220,6 +228,8 @@ export const ResponsePane: FC<Props> = ({ activeRequestId }) => {
             previewMode={activeResponse.error ? PREVIEW_MODE_SOURCE : previewMode}
             responseId={activeResponse._id}
             updateFilter={activeResponse.error ? undefined : handleSetFilter}
+            activeFilters={activeFilters}
+            updateActiveFilters={handleSetActiveFilters}
             url={activeResponse.url}
           />
         </TabPanel>

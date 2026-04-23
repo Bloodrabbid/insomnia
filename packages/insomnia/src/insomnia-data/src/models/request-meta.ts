@@ -21,6 +21,7 @@ export interface BaseRequestMeta {
   downloadPath: string | null;
   expandedAccordionKeys: Partial<Record<RequestAccordionKeys, boolean>>;
   activeMcpPrimitive?: string | null;
+  responseActiveFilters: { id: string; label: string; paths: string[]; enabled?: boolean }[];
 }
 
 export type RequestMeta = BaseModel & BaseRequestMeta;
@@ -40,5 +41,6 @@ export function init() {
     downloadPath: null,
     expandedAccordionKeys: {},
     activeMcpPrimitive: null,
+    responseActiveFilters: [],
   };
 }
