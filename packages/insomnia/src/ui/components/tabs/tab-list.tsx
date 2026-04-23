@@ -430,7 +430,7 @@ export const OrganizationTabList = ({ showActiveStatus = true, currentPage = '' 
         <Icon icon="chevron-left" className={`w-[30px] ${isOverFlow ? 'block' : 'hidden'}`} />
       </Button>
       <div
-        className="hide-scrollbars max-w-[calc(100%-40px)] overflow-x-scroll"
+        className="hide-scrollbars flex-1 min-w-0 overflow-x-scroll"
         ref={tabListWrapperRef}
         onScroll={handleScroll}
         onWheel={handleWheel}
@@ -463,7 +463,7 @@ export const OrganizationTabList = ({ showActiveStatus = true, currentPage = '' 
       >
         <Icon icon="chevron-right" className={`w-[30px] ${isOverFlow ? 'block' : 'hidden'}`} />
       </Button>
-      <div className="flex shrink-0 grow items-center justify-start gap-2 border-b border-solid border-(--hl-sm)">
+      <div className="flex shrink-0 items-center justify-start gap-2 border-b border-solid border-(--hl-sm) pr-2">
         {enableTabSessions && <TabSessionMenu />}
         <MenuTrigger>
           <Button
