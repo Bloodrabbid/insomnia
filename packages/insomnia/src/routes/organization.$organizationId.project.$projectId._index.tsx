@@ -72,6 +72,7 @@ import { NoSelectedProjectView } from '~/ui/components/panes/no-selected-project
 import { OrganizationSelect } from '~/ui/components/project/organization-select';
 import { ProjectEmptyView } from '~/ui/components/project/project-empty-view';
 import { ProjectListSidebar } from '~/ui/components/project/project-list-sidebar';
+import { SidebarSection } from '~/ui/components/sidebar-section';
 import { OrganizationTabList } from '~/ui/components/tabs/tab-list';
 import { TimeFromNow } from '~/ui/components/time-from-now';
 import { showResourceNotFoundToast } from '~/ui/components/toast-notification';
@@ -798,45 +799,47 @@ const Component = () => {
               />
               {activeProject && (
                 <>
-                  <GridList
-                    aria-label="Scope filter"
-                    items={scopeActionList}
-                    className="flex-1 shrink-0 overflow-y-auto py-(--padding-sm) data-empty:py-0"
-                    disallowEmptySelection
-                    selectedKeys={[workspaceListScope || 'all']}
-                    selectionMode="single"
-                    onSelectionChange={keys => {
-                      if (keys !== 'all') {
-                        const [value] = keys.values();
+                  <SidebarSection title="Filter by type" id="project-index-scope-filter">
+                    <GridList
+                      aria-label="Scope filter"
+                      items={scopeActionList}
+                      className="flex-1 shrink-0 overflow-y-auto py-(--padding-sm) data-empty:py-0"
+                      disallowEmptySelection
+                      selectedKeys={[workspaceListScope || 'all']}
+                      selectionMode="single"
+                      onSelectionChange={keys => {
+                        if (keys !== 'all') {
+                          const [value] = keys.values();
 
-                        setWorkspaceListScope(value.toString());
-                      }
-                    }}
-                  >
-                    {item => {
-                      return (
-                        <GridListItem textValue={item.label} className="group outline-hidden select-none">
-                          <div className="relative flex h-12 w-full items-center gap-2 overflow-hidden px-4 text-(--hl) outline-hidden transition-colors select-none group-hover:bg-(--hl-xs) group-focus:bg-(--hl-sm) group-aria-selected:bg-(--hl-sm) group-aria-selected:text-(--color-font)">
-                            <span className="flex h-6 w-6 items-center justify-center">
-                              <Icon icon={item.icon} className="w-6" />
-                            </span>
+                          setWorkspaceListScope(value.toString());
+                        }
+                      }}
+                    >
+                      {item => {
+                        return (
+                          <GridListItem textValue={item.label} className="group outline-hidden select-none">
+                            <div className="relative flex h-12 w-full items-center gap-2 overflow-hidden px-4 text-(--hl) outline-hidden transition-colors select-none group-hover:bg-(--hl-xs) group-focus:bg-(--hl-sm) group-aria-selected:bg-(--hl-sm) group-aria-selected:text-(--color-font)">
+                              <span className="flex h-6 w-6 items-center justify-center">
+                                <Icon icon={item.icon} className="w-6" />
+                              </span>
 
-                            <span className="truncate capitalize">{item.label}</span>
-                            <span className="flex-1" />
-                            {item.action && (
-                              <Button
-                                onPress={item.action.run}
-                                aria-label={item.action.label}
-                                className="flex aspect-square h-6 items-center justify-center rounded-xs text-sm text-(--color-font) opacity-80 ring-1 ring-transparent transition-all group-hover:opacity-100 group-focus:opacity-100 hover:bg-(--hl-xs) hover:opacity-100 focus:opacity-100 focus:ring-(--hl-md) focus:ring-inset aria-pressed:bg-(--hl-sm) data-pressed:opacity-100"
-                              >
-                                <Icon icon={item.action.icon} />
-                              </Button>
-                            )}
-                          </div>
-                        </GridListItem>
-                      );
-                    }}
-                  </GridList>
+                              <span className="truncate capitalize">{item.label}</span>
+                              <span className="flex-1" />
+                              {item.action && (
+                                <Button
+                                  onPress={item.action.run}
+                                  aria-label={item.action.label}
+                                  className="flex aspect-square h-6 items-center justify-center rounded-xs text-sm text-(--color-font) opacity-80 ring-1 ring-transparent transition-all group-hover:opacity-100 group-focus:opacity-100 hover:bg-(--hl-xs) hover:opacity-100 focus:opacity-100 focus:ring-(--hl-md) focus:ring-inset aria-pressed:bg-(--hl-sm) data-pressed:opacity-100"
+                                >
+                                  <Icon icon={item.action.icon} />
+                                </Button>
+                              )}
+                            </div>
+                          </GridListItem>
+                        );
+                      }}
+                    </GridList>
+                  </SidebarSection>
                   {models.project.isGitProject(activeProject) && (
                     <GitProjectSyncDropdown
                       key={activeProjectGitRepository?._id}

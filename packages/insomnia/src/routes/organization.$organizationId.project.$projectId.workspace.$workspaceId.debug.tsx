@@ -106,6 +106,7 @@ import { RequestPane } from '~/ui/components/panes/request-pane';
 import { ResponsePane } from '~/ui/components/panes/response-pane';
 import { SocketIORequestPane } from '~/ui/components/socket-io/request-pane';
 import { OrganizationTabList } from '~/ui/components/tabs/tab-list';
+import { SidebarSection } from '~/ui/components/sidebar-section';
 import { getMethodShortHand } from '~/ui/components/tags/method-tag';
 import { showResourceNotFoundToast } from '~/ui/components/toast-notification';
 import { RealtimeResponsePane } from '~/ui/components/websockets/realtime-response-pane';
@@ -843,55 +844,57 @@ const Debug = () => {
             {models.workspace.isDesign(activeWorkspace) && (
               <DocumentTab organizationId={organizationId} projectId={projectId} workspaceId={workspaceId} />
             )}
-            <div className="flex w-full flex-col items-start gap-2 p-(--padding-sm)">
-              <div className="flex w-full items-center justify-between gap-2">
-                <EnvironmentPicker
-                  isOpen={isEnvironmentPickerOpen}
-                  onOpenChange={isOpen => {
-                    setIsEnvironmentPickerOpen(isOpen);
-                    if (isOpen) {
-                      window.main.trackSegmentEvent({
-                        event: SegmentEvent.requestEnvironmentClicked,
-                      });
-                    }
+            <SidebarSection title="Workspace" id="workspace-sidebar-assets">
+              <div className="flex w-full flex-col items-start gap-2 p-(--padding-sm)">
+                <div className="flex w-full items-center justify-between gap-2">
+                  <EnvironmentPicker
+                    isOpen={isEnvironmentPickerOpen}
+                    onOpenChange={isOpen => {
+                      setIsEnvironmentPickerOpen(isOpen);
+                      if (isOpen) {
+                        window.main.trackSegmentEvent({
+                          event: SegmentEvent.requestEnvironmentClicked,
+                        });
+                      }
+                    }}
+                    onOpenEnvironmentSettingsModal={() => setEnvironmentModalOpen(true)}
+                  />
+                </div>
+                <Button
+                  onPress={() => {
+                    window.main.trackSegmentEvent({
+                      event: SegmentEvent.requestAddCookiesClicked,
+                    });
+                    setIsCookieModalOpen(true);
                   }}
-                  onOpenEnvironmentSettingsModal={() => setEnvironmentModalOpen(true)}
-                />
+                  className="flex max-w-full flex-1 items-center justify-center gap-2 truncate rounded-xs px-4 py-1 text-sm text-(--color-font) ring-1 ring-transparent transition-all hover:bg-(--hl-xs) focus:ring-(--hl-md) focus:ring-inset aria-pressed:bg-(--hl-sm)"
+                >
+                  <Icon icon="cookie-bite" className="w-5 shrink-0" />
+                  <span className="truncate">
+                    {activeCookieJar.cookies.length === 0 ? 'Add' : 'Manage'} Cookies{' '}
+                    {activeCookieJar.cookies.length > 0 ? `(${activeCookieJar.cookies.length})` : ''}
+                  </span>
+                </Button>
+                <Button
+                  onPress={() => {
+                    window.main.trackSegmentEvent({
+                      event: SegmentEvent.requestAddCertificatesClicked,
+                    });
+                    setCertificatesModalOpen(true);
+                  }}
+                  className="flex max-w-full flex-1 items-center justify-center gap-2 truncate rounded-xs px-4 py-1 text-sm text-(--color-font) ring-1 ring-transparent transition-all hover:bg-(--hl-xs) focus:ring-(--hl-md) focus:ring-inset aria-pressed:bg-(--hl-sm)"
+                >
+                  <Icon icon="file-contract" className="w-5 shrink-0" />
+                  <span className="truncate">
+                    {clientCertificates.length === 0 || caCertificate ? 'Add' : 'Manage'} Certificates{' '}
+                    {[...clientCertificates, caCertificate].filter(cert => !cert?.disabled).filter(isNotNullOrUndefined)
+                      .length > 0
+                      ? `(${[...clientCertificates, caCertificate].filter(cert => !cert?.disabled).filter(isNotNullOrUndefined).length})`
+                      : ''}
+                  </span>
+                </Button>
               </div>
-              <Button
-                onPress={() => {
-                  window.main.trackSegmentEvent({
-                    event: SegmentEvent.requestAddCookiesClicked,
-                  });
-                  setIsCookieModalOpen(true);
-                }}
-                className="flex max-w-full flex-1 items-center justify-center gap-2 truncate rounded-xs px-4 py-1 text-sm text-(--color-font) ring-1 ring-transparent transition-all hover:bg-(--hl-xs) focus:ring-(--hl-md) focus:ring-inset aria-pressed:bg-(--hl-sm)"
-              >
-                <Icon icon="cookie-bite" className="w-5 shrink-0" />
-                <span className="truncate">
-                  {activeCookieJar.cookies.length === 0 ? 'Add' : 'Manage'} Cookies{' '}
-                  {activeCookieJar.cookies.length > 0 ? `(${activeCookieJar.cookies.length})` : ''}
-                </span>
-              </Button>
-              <Button
-                onPress={() => {
-                  window.main.trackSegmentEvent({
-                    event: SegmentEvent.requestAddCertificatesClicked,
-                  });
-                  setCertificatesModalOpen(true);
-                }}
-                className="flex max-w-full flex-1 items-center justify-center gap-2 truncate rounded-xs px-4 py-1 text-sm text-(--color-font) ring-1 ring-transparent transition-all hover:bg-(--hl-xs) focus:ring-(--hl-md) focus:ring-inset aria-pressed:bg-(--hl-sm)"
-              >
-                <Icon icon="file-contract" className="w-5 shrink-0" />
-                <span className="truncate">
-                  {clientCertificates.length === 0 || caCertificate ? 'Add' : 'Manage'} Certificates{' '}
-                  {[...clientCertificates, caCertificate].filter(cert => !cert?.disabled).filter(isNotNullOrUndefined)
-                    .length > 0
-                    ? `(${[...clientCertificates, caCertificate].filter(cert => !cert?.disabled).filter(isNotNullOrUndefined).length})`
-                    : ''}
-                </span>
-              </Button>
-            </div>
+            </SidebarSection>
           </div>
           <div className="flex flex-1 flex-col overflow-hidden">
             <div className="flex justify-between gap-1 p-(--padding-sm)">
@@ -1050,108 +1053,112 @@ const Debug = () => {
               </MenuTrigger>
             </div>
 
-            <GridList
-              id="sidebar-pinned-request-gridlist"
-              className="max-h-[50%] overflow-y-auto border-t border-b border-solid border-(--hl-sm) py-(--padding-sm) data-empty:border-none data-empty:py-0"
-              items={collection.filter(item => item.pinned)}
-              aria-label="Pinned Requests"
-              disallowEmptySelection
-              selectedKeys={requestId ? [requestId] : []}
-              selectionMode="single"
-            >
-              {item => {
-                return (
-                  <GridListItem
-                    key={item.doc._id}
-                    id={item.doc._id}
-                    className="group outline-hidden select-none"
-                    textValue={item.doc.name}
-                    data-testid={item.doc.name}
-                    onAuxClick={e => {
-                      if (e.button === 1) {
-                        e.preventDefault();
-                        tabNavigate(
-                          {
-                            organization: organizationId,
-                            project: activeProject,
-                            workspace: activeWorkspace,
-                            item: item.doc,
-                          },
-                          { withTab: true, shouldNavigate: true, searchParams },
-                        );
-                      }
-                    }}
-                    onPress={e => {
-                      tabNavigate(
-                        {
-                          organization: organizationId,
-                          project: activeProject,
-                          workspace: activeWorkspace,
-                          item: item.doc,
-                        },
-                        { withTab: isPrimaryClickModifier(e), shouldNavigate: true, searchParams },
-                      );
-                    }}
-                  >
-                    <div className="relative flex h-(--line-height-xs) w-full items-center gap-2 overflow-hidden px-4 text-(--hl) outline-hidden transition-colors select-none group-hover:bg-(--hl-xs) group-focus:bg-(--hl-sm) group-aria-selected:text-(--color-font)">
-                      <span className="absolute top-0 left-0 h-full w-0.5 bg-transparent transition-colors group-aria-selected:bg-(--color-surprise)" />
-                      {isRequest(item.doc) && (
-                        <span
-                          className={`flex w-10 shrink-0 items-center justify-center rounded-xs border border-solid border-(--hl-sm) text-[0.65rem] ${
-                            {
-                              GET: 'bg-[rgba(var(--color-surprise-rgb),0.5)] text-(--color-font-surprise)',
-                              POST: 'bg-[rgba(var(--color-success-rgb),0.5)] text-(--color-font-success)',
-                              HEAD: 'bg-[rgba(var(--color-info-rgb),0.5)] text-(--color-font-info)',
-                              OPTIONS: 'bg-[rgba(var(--color-info-rgb),0.5)] text-(--color-font-info)',
-                              DELETE: 'bg-[rgba(var(--color-danger-rgb),0.5)] text-(--color-font-danger)',
-                              PUT: 'bg-[rgba(var(--color-warning-rgb),0.5)] text-(--color-font-warning)',
-                              PATCH: 'bg-[rgba(var(--color-notice-rgb),0.5)] text-(--color-font-notice)',
-                            }[item.doc.method] || 'bg-(--hl-md) text-(--color-font)'
-                          }`}
-                        >
-                          {getMethodShortHand(item.doc)}
-                        </span>
-                      )}
-                      {models.webSocketRequest.isWebSocketRequest(item.doc) && (
-                        <span className="flex w-10 shrink-0 items-center justify-center rounded-xs border border-solid border-(--hl-sm) bg-[rgba(var(--color-notice-rgb),0.5)] text-[0.65rem] text-(--color-font-notice)">
-                          WS
-                        </span>
-                      )}
-                      {models.socketIORequest.isSocketIORequest(item.doc) && (
-                        <span className="flex w-10 shrink-0 items-center justify-center rounded-xs border border-solid border-(--hl-sm) bg-[rgba(var(--color-notice-rgb),0.5)] text-[0.65rem] text-(--color-font-notice)">
-                          IO
-                        </span>
-                      )}
-                      {models.grpcRequest.isGrpcRequest(item.doc) && (
-                        <span className="flex w-10 shrink-0 items-center justify-center rounded-xs border border-solid border-(--hl-sm) bg-[rgba(var(--color-info-rgb),0.5)] text-[0.65rem] text-(--color-font-info)">
-                          gRPC
-                        </span>
-                      )}
-                      <EditableInput
-                        value={getRequestNameOrFallback(item.doc)}
-                        name="request name"
-                        ariaLabel="request name"
-                        className="flex-1 px-1"
-                        onSubmit={newName => {
-                          if (isRequestGroup(item.doc)) {
-                            patchGroup(item.doc._id, { name: newName });
-                          } else {
-                            patchRequest(item.doc._id, { name: newName });
+            {collection.filter(item => item.pinned).length > 0 && (
+              <SidebarSection title="Pinned Requests" id="workspace-sidebar-pinned">
+                <GridList
+                  id="sidebar-pinned-request-gridlist"
+                  className="max-h-[50%] overflow-y-auto border-t border-b border-solid border-(--hl-sm) py-(--padding-sm) data-empty:border-none data-empty:py-0"
+                  items={collection.filter(item => item.pinned)}
+                  aria-label="Pinned Requests"
+                  disallowEmptySelection
+                  selectedKeys={requestId ? [requestId] : []}
+                  selectionMode="single"
+                >
+                  {item => {
+                    return (
+                      <GridListItem
+                        key={item.doc._id}
+                        id={item.doc._id}
+                        className="group outline-hidden select-none"
+                        textValue={item.doc.name}
+                        data-testid={item.doc.name}
+                        onAuxClick={e => {
+                          if (e.button === 1) {
+                            e.preventDefault();
+                            tabNavigate(
+                              {
+                                organization: organizationId,
+                                project: activeProject,
+                                workspace: activeWorkspace,
+                                item: item.doc,
+                              },
+                              { withTab: true, shouldNavigate: true, searchParams },
+                            );
                           }
                         }}
-                      />
-                      {item.pinned && (
-                        <Icon
-                          className="text-(--font-size-sm)"
-                          icon="thumb-tack"
-                          onDoubleClick={() => patchRequestMeta(item.doc._id, { pinned: !item.pinned })}
-                        />
-                      )}
-                    </div>
-                  </GridListItem>
-                );
-              }}
-            </GridList>
+                        onPress={e => {
+                          tabNavigate(
+                            {
+                              organization: organizationId,
+                              project: activeProject,
+                              workspace: activeWorkspace,
+                              item: item.doc,
+                            },
+                            { withTab: isPrimaryClickModifier(e), shouldNavigate: true, searchParams },
+                          );
+                        }}
+                      >
+                        <div className="relative flex h-(--line-height-xs) w-full items-center gap-2 overflow-hidden px-4 text-(--hl) outline-hidden transition-colors select-none group-hover:bg-(--hl-xs) group-focus:bg-(--hl-sm) group-aria-selected:text-(--color-font)">
+                          <span className="absolute top-0 left-0 h-full w-0.5 bg-transparent transition-colors group-aria-selected:bg-(--color-surprise)" />
+                          {isRequest(item.doc) && (
+                            <span
+                              className={`flex w-10 shrink-0 items-center justify-center rounded-xs border border-solid border-(--hl-sm) text-[0.65rem] ${
+                                {
+                                  GET: 'bg-[rgba(var(--color-surprise-rgb),0.5)] text-(--color-font-surprise)',
+                                  POST: 'bg-[rgba(var(--color-success-rgb),0.5)] text-(--color-font-success)',
+                                  HEAD: 'bg-[rgba(var(--color-info-rgb),0.5)] text-(--color-font-info)',
+                                  OPTIONS: 'bg-[rgba(var(--color-info-rgb),0.5)] text-(--color-font-info)',
+                                  DELETE: 'bg-[rgba(var(--color-danger-rgb),0.5)] text-(--color-font-danger)',
+                                  PUT: 'bg-[rgba(var(--color-warning-rgb),0.5)] text-(--color-font-warning)',
+                                  PATCH: 'bg-[rgba(var(--color-notice-rgb),0.5)] text-(--color-font-notice)',
+                                }[item.doc.method] || 'bg-(--hl-md) text-(--color-font)'
+                              }`}
+                            >
+                              {getMethodShortHand(item.doc)}
+                            </span>
+                          )}
+                          {models.webSocketRequest.isWebSocketRequest(item.doc) && (
+                            <span className="flex w-10 shrink-0 items-center justify-center rounded-xs border border-solid border-(--hl-sm) bg-[rgba(var(--color-notice-rgb),0.5)] text-[0.65rem] text-(--color-font-notice)">
+                              WS
+                            </span>
+                          )}
+                          {models.socketIORequest.isSocketIORequest(item.doc) && (
+                            <span className="flex w-10 shrink-0 items-center justify-center rounded-xs border border-solid border-(--hl-sm) bg-[rgba(var(--color-notice-rgb),0.5)] text-[0.65rem] text-(--color-font-notice)">
+                              IO
+                            </span>
+                          )}
+                          {models.grpcRequest.isGrpcRequest(item.doc) && (
+                            <span className="flex w-10 shrink-0 items-center justify-center rounded-xs border border-solid border-(--hl-sm) bg-[rgba(var(--color-info-rgb),0.5)] text-[0.65rem] text-(--color-font-info)">
+                              gRPC
+                            </span>
+                          )}
+                          <EditableInput
+                            value={getRequestNameOrFallback(item.doc)}
+                            name="request name"
+                            ariaLabel="request name"
+                            className="flex-1 px-1"
+                            onSubmit={newName => {
+                              if (isRequestGroup(item.doc)) {
+                                patchGroup(item.doc._id, { name: newName });
+                              } else {
+                                patchRequest(item.doc._id, { name: newName });
+                              }
+                            }}
+                          />
+                          {item.pinned && (
+                            <Icon
+                              className="text-(--font-size-sm)"
+                              icon="thumb-tack"
+                              onDoubleClick={() => patchRequestMeta(item.doc._id, { pinned: !item.pinned })}
+                            />
+                          )}
+                        </div>
+                      </GridListItem>
+                    );
+                  }}
+                </GridList>
+              </SidebarSection>
+            )}
 
             <div className="flex-1 overflow-y-auto" ref={parentRef}>
               <GridList
@@ -1379,36 +1386,38 @@ const ScratchPadTutorialPanel = () => {
         </div>
       ) : null}
 
-      <GridList
-        aria-label="Scope filter"
-        items={scratchPadTutorialList}
-        className="shrink-0 overflow-y-auto py-(--padding-sm) data-empty:py-0"
-        disallowEmptySelection
-        selectedKeys={[panel]}
-        selectionMode="single"
-        onSelectionChange={keys => {
-          if (keys !== 'all') {
-            const selected = Array.from(keys.values())[0].toString();
-            navigate(
-              `/organization/${organizationId}/project/${projectId}/workspace/${workspaceId}/debug/tutorial/${selected}`,
-            );
-          }
-        }}
-      >
-        {item => {
-          return (
-            <GridListItem textValue={item.title} className="group outline-hidden select-none">
-              <div className="relative flex h-12 w-full items-center gap-2 overflow-hidden px-4 text-(--hl) outline-hidden transition-colors select-none group-hover:bg-(--hl-xs) group-focus:bg-(--hl-sm) group-aria-selected:bg-(--hl-sm) group-aria-selected:text-(--color-font)">
-                <span className="flex h-6 w-6 items-center justify-center">
-                  <Icon icon={item.icon} className="w-6" />
-                </span>
+      <SidebarSection title="Filter by type" id="scratchpad-scope-filter">
+        <GridList
+          aria-label="Scope filter"
+          items={scratchPadTutorialList}
+          className="shrink-0 overflow-y-auto py-(--padding-sm) data-empty:py-0"
+          disallowEmptySelection
+          selectedKeys={[panel]}
+          selectionMode="single"
+          onSelectionChange={keys => {
+            if (keys !== 'all') {
+              const selected = Array.from(keys.values())[0].toString();
+              navigate(
+                `/organization/${organizationId}/project/${projectId}/workspace/${workspaceId}/debug/tutorial/${selected}`,
+              );
+            }
+          }}
+        >
+          {item => {
+            return (
+              <GridListItem textValue={item.title} className="group outline-hidden select-none">
+                <div className="relative flex h-12 w-full items-center gap-2 overflow-hidden px-4 text-(--hl) outline-hidden transition-colors select-none group-hover:bg-(--hl-xs) group-focus:bg-(--hl-sm) group-aria-selected:bg-(--hl-sm) group-aria-selected:text-(--color-font)">
+                  <span className="flex h-6 w-6 items-center justify-center">
+                    <Icon icon={item.icon} className="w-6" />
+                  </span>
 
-                <span className="truncate">{item.title}</span>
-              </div>
-            </GridListItem>
-          );
-        }}
-      </GridList>
+                  <span className="truncate">{item.title}</span>
+                </div>
+              </GridListItem>
+            );
+          }}
+        </GridList>
+      </SidebarSection>
     </>
   );
 };
