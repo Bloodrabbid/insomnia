@@ -39,7 +39,8 @@ export type AllTypes =
   | 'McpResponse'
   | 'McpPayload'
   | 'Workspace'
-  | 'WorkspaceMeta';
+  | 'WorkspaceMeta'
+  | 'TabSession';
 
 export interface BaseModel {
   _id: string;

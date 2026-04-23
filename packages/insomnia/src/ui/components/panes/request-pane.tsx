@@ -113,7 +113,12 @@ export const RequestPane: FC<Props> = ({ environmentId, settings, onPaste }) => 
           />
         </ErrorBoundary>
       </PaneHeader>
-      <Tabs aria-label="Request pane tabs" className="flex h-full w-full flex-1 flex-col">
+      <Tabs
+        key={requestId}
+        aria-label="Request pane tabs"
+        className="flex h-full w-full flex-1 flex-col"
+        defaultSelectedKey={settings.defaultRequestPaneTab === 'body' ? 'content-type' : settings.defaultRequestPaneTab}
+      >
         <TabList
           className="scrollbar-thin flex h-(--line-height-sm) w-full shrink-0 items-center overflow-x-auto border-b border-solid border-b-(--hl-md) bg-(--color-bg)"
           aria-label="Request pane tabs"

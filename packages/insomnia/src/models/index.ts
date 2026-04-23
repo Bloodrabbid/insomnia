@@ -22,6 +22,7 @@ export const requestVersion = models.requestVersion;
 export const runnerTestResult = models.runnerTestResult;
 export const response = models.response;
 export const settings = models.settings;
+export const tabSession = models.tabSession;
 export const project = models.project;
 export const stats = models.stats;
 export const unitTest = models.unitTest;
@@ -114,6 +115,7 @@ export const getAllDescendantMap = (): Partial<Record<AllTypes, AllTypes[]>> => 
       caCertificate.type,
       clientCertificate.type,
       mcpRequest.type,
+      tabSession.type,
     ],
     [requestGroup.type]: [
       requestGroup.type,

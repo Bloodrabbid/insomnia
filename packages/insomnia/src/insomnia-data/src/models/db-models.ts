@@ -26,6 +26,7 @@ export * as requestVersion from './request-version';
 export * as response from './response';
 export * as runnerTestResult from './runner-test-result';
 export * as settings from './settings';
+export * as tabSession from './tab-session';
 export * as socketIOPayload from './socket-io-payload';
 export * as socketIORequest from './socket-io-request';
 export * as socketIOResponse from './socket-io-response';

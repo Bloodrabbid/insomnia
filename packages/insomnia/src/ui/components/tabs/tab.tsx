@@ -36,6 +36,7 @@ export interface BaseTab {
   // method is used to display the tag color
   tag?: string;
   method?: string;
+  requestUrl?: string;
   temporary?: boolean;
 }
 
@@ -75,52 +76,16 @@ const WORKSPACE_TAB_UI_MAP: Partial<Record<TabType, any>> = {
   },
 };
 
-export const InsomniaTab = ({ tab }: { tab: BaseTab }) => {
+export const InsomniaTab = ({
+  tab,
+  isGrouped,
+  isLastInGroup,
+}: {
+  tab: BaseTab;
+  isGrouped?: boolean;
+  isLastInGroup?: boolean;
+}) => {
   const { closeTabById, currentOrgTabs } = useInsomniaTabContext();
-
-  const renderTabIcon = (type: TabType, tabId: string) => {
-    if (WORKSPACE_TAB_UI_MAP[type]) {
-      return (
-        <div
-          className={`${WORKSPACE_TAB_UI_MAP[type].bgColor} ${WORKSPACE_TAB_UI_MAP[type].textColor} flex h-[20px] w-[20px] items-center justify-center rounded-s-sm px-2`}
-        >
-          <Icon icon={WORKSPACE_TAB_UI_MAP[type].icon} />
-        </div>
-      );
-    }
-
-    if (models.mcpRequest.isMcpRequestId(tabId)) {
-      return (
-        <div className="flex h-[20px] w-[20px] items-center justify-center rounded-s-sm bg-(--color-danger) px-2 text-(--color-font-danger)">
-          <Icon icon={['fac', 'mcp'] as unknown as IconProp} />
-        </div>
-      );
-    }
-
-    if (type === 'request' || type === 'mockRoute') {
-      return (
-        <span
-          aria-label="Tab Tag"
-          className={`flex w-10 shrink-0 items-center justify-center rounded-xs border border-solid border-(--hl-sm) text-[0.65rem] ${REQUEST_METHOD_STYLE_MAP[tab?.method || tab?.tag || '']}`}
-        >
-          {tab.tag}
-        </span>
-      );
-    }
-
-    if (type === 'folder') {
-      return <Icon icon="folder" />;
-    }
-    if (type === 'runner') {
-      return <Icon icon="play" />;
-    }
-
-    if (type === 'testSuite') {
-      return <Icon icon="check" />;
-    }
-
-    return null;
-  };
 
   const handleAuxClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, id: string) => {
     // If mouse middle button clicked, close tab
@@ -171,40 +136,111 @@ export const InsomniaTab = ({ tab }: { tab: BaseTab }) => {
       className="outline-hidden hover:bg-(--hl-xs) aria-selected:bg-(--hl-sm) aria-selected:text-(--color-font)"
       ref={scrollIntoView}
     >
-      {({ isSelected, isHovered }) => (
-        <Tooltip delay={1000} message={`${tab.projectName} / ${tab.workspaceName}`} className="h-full">
-          <div
-            onDoubleClick={handleDoubleClick}
-            onAuxClick={e => handleAuxClick(e, tab.id)}
-            onContextMenu={handleContextMenu}
-            className={`relative flex h-full max-w-[200px] cursor-pointer flex-nowrap items-center border-r border-solid border-(--hl-sm) px-[10px] outline-hidden hover:text-(--color-font) ${!isSelected && !isHovered && 'opacity-[0.7]'}`}
-          >
-            {renderTabIcon(tab.type, tab.id)}
-            <span
-              className={classNames('mx-[8px] overflow-hidden text-nowrap text-ellipsis', {
-                italic: tab.temporary,
-              })}
+      {({ isSelected, isHovered }) => {
+        const shouldShowNameAsTag = isGrouped && isLastInGroup && !isSelected && !isHovered;
+
+        const renderTabIcon = () => {
+          const type = tab.type;
+          const tabId = tab.id;
+
+          if (WORKSPACE_TAB_UI_MAP[type]) {
+            return (
+              <div
+                className={`${WORKSPACE_TAB_UI_MAP[type].bgColor} ${WORKSPACE_TAB_UI_MAP[type].textColor} flex h-[20px] w-[20px] items-center justify-center rounded-s-sm px-2`}
+              >
+                <Icon icon={WORKSPACE_TAB_UI_MAP[type].icon} />
+              </div>
+            );
+          }
+
+          if (models.mcpRequest.isMcpRequestId(tabId)) {
+            return (
+              <div className="flex h-[20px] w-[20px] items-center justify-center rounded-s-sm bg-(--color-danger) px-2 text-(--color-font-danger)">
+                <Icon icon={['fac', 'mcp'] as unknown as IconProp} />
+              </div>
+            );
+          }
+
+          if (type === 'request' || type === 'mockRoute') {
+            return (
+              <span
+                aria-label="Tab Tag"
+                className={classNames(
+                  'flex shrink-0 items-center justify-center rounded-xs border border-solid border-(--hl-sm) text-[0.65rem] transition-all duration-200',
+                  shouldShowNameAsTag ? 'w-auto px-1' : 'w-10',
+                  REQUEST_METHOD_STYLE_MAP[tab?.method || tab?.tag || '']
+                )}
+              >
+                {shouldShowNameAsTag ? (tab.name.length > 10 ? tab.name.slice(0, 9) + '..' : tab.name) : tab.tag}
+              </span>
+            );
+          }
+
+          if (type === 'folder') {
+            return <Icon icon="folder" />;
+          }
+          if (type === 'runner') {
+            return <Icon icon="play" />;
+          }
+
+          if (type === 'testSuite') {
+            return <Icon icon="check" />;
+          }
+
+          return null;
+        };
+
+        return (
+          <Tooltip delay={1000} message={`${tab.projectName} / ${tab.workspaceName}`} className="h-full">
+            <div
+              onDoubleClick={handleDoubleClick}
+              onAuxClick={e => handleAuxClick(e, tab.id)}
+              onContextMenu={handleContextMenu}
+              className={classNames(
+                'relative flex h-full cursor-pointer flex-nowrap items-center border-r border-solid border-(--hl-sm) px-[10px] outline-hidden hover:text-(--color-font) transition-all duration-200 ease-in-out',
+                {
+                  'opacity-[0.7]': !isSelected && !isHovered,
+                  'max-w-[50px] overflow-hidden delay-100': isGrouped && !isSelected && !isHovered && !isLastInGroup,
+                  'max-w-[80px] overflow-hidden delay-100': isGrouped && !isSelected && !isHovered && isLastInGroup,
+                  'max-w-[200px] delay-0': !isGrouped || isSelected || isHovered,
+                }
+              )}
             >
-              {models.mcpRequest.isMcpRequestId(tab.id) ? tab.workspaceName : tab.name}
-            </span>
-            <Button
-              aria-label="Close Tab"
-              data-testid="tab-close-button"
-              className="flex h-[15px] w-[15px] items-center justify-center hover:bg-(--hl-md)"
-              onPress={() => closeTabById(tab.id)}
-            >
-              <Icon icon="close" />
-            </Button>
-            <span
-              className={`absolute right-0 bottom-0 left-0 block h-px bg-(--color-bg) ${isSelected ? 'opacity-100' : 'opacity-0'}`}
-            />
-            <span
-              className={`absolute right-0 bottom-0 left-0 block h-px bg-(--hl-sm) ${!isSelected ? 'opacity-100' : 'opacity-0'}`}
-            />
-          </div>
-          <Button slot="drag" className="hidden" />
-        </Tooltip>
-      )}
+              {renderTabIcon()}
+              <span
+                className={classNames('mx-[8px] overflow-hidden text-nowrap text-ellipsis transition-opacity duration-200', {
+                  italic: tab.temporary,
+                  'opacity-0 delay-100': isGrouped && !isSelected && !isHovered,
+                  'opacity-100 delay-0': !isGrouped || isSelected || isHovered,
+                })}
+              >
+                {models.mcpRequest.isMcpRequestId(tab.id) ? tab.workspaceName : tab.name}
+              </span>
+              <Button
+                aria-label="Close Tab"
+                data-testid="tab-close-button"
+                className={classNames(
+                  'flex h-[15px] w-[15px] shrink-0 items-center justify-center hover:bg-(--hl-md) transition-opacity duration-200',
+                  {
+                    'opacity-0 pointer-events-none delay-100': isGrouped && !isSelected && !isHovered,
+                    'opacity-100 delay-0': !isGrouped || isSelected || isHovered,
+                  }
+                )}
+                onPress={() => closeTabById(tab.id)}
+              >
+                <Icon icon="close" />
+              </Button>
+              <span
+                className={`absolute right-0 bottom-0 left-0 block h-px bg-(--color-bg) ${isSelected ? 'opacity-100' : 'opacity-0'}`}
+              />
+              <span
+                className={`absolute right-0 bottom-0 left-0 block h-px bg-(--hl-sm) ${!isSelected ? 'opacity-100' : 'opacity-0'}`}
+              />
+            </div>
+            <Button slot="drag" className="hidden" />
+          </Tooltip>
+        );
+      }}
     </GridListItem>
   );
 };

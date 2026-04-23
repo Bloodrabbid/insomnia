@@ -163,4 +163,7 @@ export interface Settings {
   saveVaultKeyToOSSecretManager: boolean;
   vaultSecretCacheDuration: number;
   dataFolders: string[];
+  enableTabGrouping: boolean;
+  enableTabSessions: boolean;
+  defaultRequestPaneTab: 'params' | 'body' | 'auth' | 'headers' | 'scripts' | 'docs';
 }

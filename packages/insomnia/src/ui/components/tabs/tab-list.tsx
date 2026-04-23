@@ -16,6 +16,7 @@ import type { MockRoute, Request } from '~/insomnia-data';
 import { services } from '~/insomnia-data';
 import { useRequestNewActionFetcher } from '~/routes/organization.$organizationId.project.$projectId.workspace.$workspaceId.debug.request.new';
 import { useInsomniaTab } from '~/ui/hooks/use-insomnia-tab';
+import { useRootLoaderData } from '~/root';
 
 import { type ChangeBufferEvent, type ChangeType, database } from '../../../common/database';
 import { debounce } from '../../../common/misc';
@@ -28,6 +29,7 @@ import { useDocBodyKeyboardShortcuts } from '../keydown-binder';
 import { AddRequestToCollectionModal } from '../modals/add-request-to-collection-modal';
 import { formatMethodName, getRequestMethodShortHand } from '../tags/method-tag';
 import { type BaseTab, InsomniaTab } from './tab';
+import { TabSessionMenu } from './tab-session-menu';
 
 const { isRequest } = models.request;
 const { isRequestGroup } = models.requestGroup;
@@ -248,6 +250,43 @@ export const OrganizationTabList = ({ showActiveStatus = true, currentPage = '' 
     };
   }, [handleDelete, handleUpdate]);
 
+  const { settings } = useRootLoaderData()!;
+  const { enableTabGrouping, enableTabSessions } = settings;
+
+  const groupedTabList = React.useMemo(() => {
+    if (!enableTabGrouping) {
+      return tabList.map(tab => ({ ...tab, isGrouped: false, groupKey: `unique_${tab.id}`, isLastInGroup: false }));
+    }
+
+    const groups: Record<string, BaseTab[]> = {};
+    const keys: string[] = [];
+
+    tabList.forEach(tab => {
+      // Create a key based on workspaceId, method and requestUrl
+      const key = (tab.method && tab.requestUrl) ? `${tab.workspaceId}:${tab.method}:${tab.requestUrl}` : `unique_${tab.id}`;
+      if (!groups[key]) {
+        groups[key] = [];
+        keys.push(key);
+      }
+      groups[key].push(tab);
+    });
+
+    const result: (BaseTab & { isGrouped: boolean; groupKey: string; isLastInGroup: boolean })[] = [];
+    keys.forEach(key => {
+      const group = groups[key];
+      const isGrouped = group.length > 1;
+      group.forEach((tab, index) => {
+        result.push({
+          ...tab,
+          isGrouped,
+          groupKey: key,
+          isLastInGroup: isGrouped && index === group.length - 1,
+        });
+      });
+    });
+    return result;
+  }, [tabList, enableTabGrouping]);
+
   const addRequest = () => {
     const currentTab = tabList.find(tab => tab.id === activeTabId);
     if (currentTab) {
@@ -345,6 +384,17 @@ export const OrganizationTabList = ({ showActiveStatus = true, currentPage = '' 
     calculateScrollButtonStatus(e.target as HTMLDivElement);
   };
 
+  const handleWheel = (e: React.WheelEvent) => {
+    if (!tabListWrapperRef.current || !isOverFlow) {
+      return;
+    }
+
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      tabListWrapperRef.current.scrollLeft += e.deltaY;
+      e.preventDefault();
+    }
+  };
+
   useEffect(() => {
     if (isOverFlow && tabListWrapperRef?.current) {
       calculateScrollButtonStatus(tabListWrapperRef?.current);
@@ -383,6 +433,7 @@ export const OrganizationTabList = ({ showActiveStatus = true, currentPage = '' 
         className="hide-scrollbars max-w-[calc(100%-40px)] overflow-x-scroll"
         ref={tabListWrapperRef}
         onScroll={handleScroll}
+        onWheel={handleWheel}
       >
         <GridList
           aria-label="Insomnia Tabs"
@@ -393,10 +444,16 @@ export const OrganizationTabList = ({ showActiveStatus = true, currentPage = '' 
           selectionBehavior="replace"
           className="flex h-[41px] w-fit"
           dragAndDropHooks={dragAndDropHooks}
-          items={tabList}
+          items={groupedTabList}
           ref={tabListInnerRef}
         >
-          {item => <InsomniaTab tab={item} />}
+          {item => (
+            <InsomniaTab
+              tab={item}
+              isGrouped={item.isGrouped}
+              isLastInGroup={item.isLastInGroup}
+            />
+          )}
         </GridList>
       </div>
       <Button
@@ -406,7 +463,8 @@ export const OrganizationTabList = ({ showActiveStatus = true, currentPage = '' 
       >
         <Icon icon="chevron-right" className={`w-[30px] ${isOverFlow ? 'block' : 'hidden'}`} />
       </Button>
-      <div className="flex shrink-0 grow items-center justify-start border-b border-solid border-(--hl-sm)">
+      <div className="flex shrink-0 grow items-center justify-start gap-2 border-b border-solid border-(--hl-sm)">
+        {enableTabSessions && <TabSessionMenu />}
         <MenuTrigger>
           <Button
             aria-label="Tab Plus"

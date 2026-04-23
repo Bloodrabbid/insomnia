@@ -17,9 +17,8 @@ export const BooleanSetting: FC<{
   disabled?: boolean;
 }> = ({ help, label, setting, confirmBeforeToggle = false, confirmMessage, disabled = false }) => {
   const { settings } = useRootLoaderData()!;
-  if (!(setting in settings)) {
-    throw new Error(`Invalid boolean setting name ${setting}`);
-  }
+  // If setting is missing in DB (e.g. new setting for existing user), default to true for enableTabGrouping, else false
+  const isChecked = setting in settings ? Boolean(settings[setting]) : (setting === 'enableTabGrouping' ? true : false);
   const patchSettings = useSettingsPatcher();
 
   return (
@@ -27,7 +26,7 @@ export const BooleanSetting: FC<{
       <div className="">
         <label className="flex items-center gap-2">
           <input
-            checked={Boolean(settings[setting])}
+            checked={isChecked}
             name={setting}
             onChange={event => {
               const isChecked = event.currentTarget.checked;

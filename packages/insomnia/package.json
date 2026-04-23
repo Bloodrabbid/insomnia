@@ -1,6 +1,6 @@
 {
   "name": "insomnia",
-  "version": "12.5.1-alpha.0",
+  "version": "12.5.2",
   "productName": "Insomnia",
   "private": true,
   "description": "The Collaborative API Design Tool",
@@ -14,7 +14,7 @@
     "directory": "packages/insomnia"
   },
   "license": "Apache-2.0",
-  "author": "Kong <office@konghq.com>",
+  "author": "Bloodrabbid",
   "main": "src/entry.main.min.js",
   "scripts": {
     "verify-bundle-plugins": "esr --cache ./scripts/verify-bundle-plugins.ts",

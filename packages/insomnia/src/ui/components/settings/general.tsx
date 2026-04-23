@@ -45,6 +45,29 @@ export const General: FC = () => {
             help="If checked, reveals the environment variable source and value in the template tag. Otherwise, hover over the template tag to see the source and value."
             setting="showVariableSourceAndValue"
           />
+          <BooleanSetting
+            label="Enable tab grouping"
+            help="If checked, tabs with the same URL will be grouped and shrunken to save space."
+            setting="enableTabGrouping"
+          />
+          <BooleanSetting
+            label="Enable tab sessions"
+            help="If checked, allows saving and loading named sets of tabs to switch context quickly."
+            setting="enableTabSessions"
+          />
+          <EnumSetting
+            label="Default request tab"
+            help="Select which tab should be active by default when opening a request."
+            setting="defaultRequestPaneTab"
+            values={[
+              { value: 'params', name: 'Params' },
+              { value: 'body', name: 'Body' },
+              { value: 'auth', name: 'Auth' },
+              { value: 'headers', name: 'Headers' },
+              { value: 'scripts', name: 'Scripts' },
+              { value: 'docs', name: 'Docs' },
+            ]}
+          />
         </div>
         <div>
           <BooleanSetting label="Reveal passwords" setting="showPasswords" />

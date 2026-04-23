@@ -318,6 +318,10 @@ export const createNedbDatabase = <O = initOptions>(
           ...defaultConfig,
           filename: fsPath.join(dbPath, 'insomnia.Settings.db'),
         }),
+        TabSession: new NeDB({
+          ...defaultConfig,
+          filename: fsPath.join(dbPath, 'insomnia.TabSession.db'),
+        }),
         SocketIOPayload: new NeDB({
           ...defaultConfig,
           filename: fsPath.join(dbPath, 'insomnia.SocketIOPayload.db'),

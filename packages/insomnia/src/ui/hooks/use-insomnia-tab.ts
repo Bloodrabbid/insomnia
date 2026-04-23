@@ -299,6 +299,7 @@ export const buildTabFromResource = async (params: AddTabParams, withTab?: boole
   ) {
     baseTab.tag = getRequestMethodShortHand(resource);
     baseTab.method = (resource as Request).method || '';
+    baseTab.requestUrl = (resource as any).url;
   }
 
   if (models.mockRoute.isMockRoute(resource)) {

@@ -1,6 +1,8 @@
 import React, { createContext, type FC, type PropsWithChildren, useCallback, useContext, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import * as reactUse from 'react-use';
+import { database } from '~/common/database';
+import { models } from '~/insomnia-data';
 
 import { isScratchpadOrganizationId } from '~/models/organization';
 import type { BaseTab } from '~/ui/components/tabs/tab';
@@ -39,6 +41,8 @@ interface ContextProps {
   goToNextTab?: () => void;
   goToPreviousTab?: () => void;
   reopenClosedTab?: () => void;
+  saveTabSession: (name: string) => Promise<void>;
+  loadTabSession: (session: any) => Promise<void>;
 }
 
 const InsomniaTabContext = createContext<ContextProps>({
@@ -50,6 +54,8 @@ const InsomniaTabContext = createContext<ContextProps>({
   addTab: () => {},
   addTemporaryTab: () => {},
   changeActiveTab: () => {},
+  saveTabSession: async () => {},
+  loadTabSession: async () => {},
 });
 
 type InsomniaTabs = Record<string, OrganizationTabs & { tabHistory?: string[] }>;
@@ -581,6 +587,34 @@ export const InsomniaTabProvider: FC<PropsWithChildren> = ({ children }) => {
     }
   }, [navigate, organizationId, updateInsomniaTabs]);
 
+  const saveTabSession = useCallback(async (name: string) => {
+    const currentTabs = appTabsRef.current?.[organizationId];
+    if (!currentTabs || currentTabs.tabList.length === 0) return;
+
+    const activeTab = currentTabs.tabList.find(t => t.id === currentTabs.activeTabId) || currentTabs.tabList[0];
+    const workspaceId = activeTab.workspaceId;
+
+    await database.docCreate(models.tabSession.type, {
+      name,
+      tabs: currentTabs.tabList,
+      activeTabId: currentTabs.activeTabId,
+      parentId: workspaceId,
+    });
+  }, [organizationId]);
+
+  const loadTabSession = useCallback(async (session: any) => {
+    updateInsomniaTabs({
+      organizationId,
+      tabList: session.tabs,
+      activeTabId: session.activeTabId,
+    });
+
+    const activeTab = session.tabs.find((t: BaseTab) => t.id === session.activeTabId) || session.tabs[0];
+    if (activeTab?.url) {
+      navigate(activeTab.url);
+    }
+  }, [organizationId, updateInsomniaTabs, navigate]);
+
   return (
     <InsomniaTabContext.Provider
       value={{
@@ -604,6 +638,8 @@ export const InsomniaTabProvider: FC<PropsWithChildren> = ({ children }) => {
         goToNextTab,
         goToPreviousTab,
         reopenClosedTab,
+        saveTabSession,
+        loadTabSession,
       }}
     >
       {children}
