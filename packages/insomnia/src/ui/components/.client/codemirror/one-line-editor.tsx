@@ -35,6 +35,7 @@ export interface OneLineEditorProps {
   onPaste?: (text: string) => void;
   onBlur?: (e: FocusEvent) => void;
   eventListeners?: EditorEventListener<keyof EditorEventMap>[];
+  uniquenessKey?: string;
 }
 
 export interface EditorEventListener<T extends keyof EditorEventMap> {
@@ -46,6 +47,14 @@ export interface OneLineEditorHandle {
   focusEnd: () => void;
   setValue: (value: string) => void;
 }
+
+interface EditorState {
+  selections: CodeMirror.Range[];
+  cursor: CodeMirror.Position;
+  history: any;
+}
+
+const editorStates: Record<string, EditorState> = {};
 export const OneLineEditor = forwardRef<OneLineEditorHandle, OneLineEditorProps>(
   (
     {
@@ -60,6 +69,7 @@ export const OneLineEditor = forwardRef<OneLineEditorHandle, OneLineEditorProps>
       onPaste,
       onBlur,
       eventListeners,
+      uniquenessKey,
     },
     ref,
   ) => {
@@ -75,6 +85,15 @@ export const OneLineEditor = forwardRef<OneLineEditorHandle, OneLineEditorProps>
       }
       return 'default';
     }, [settings.enableKeyMapForInlineTextEditors, settings.editorKeyMap, readOnly]);
+    const persistState = useCallback(() => {
+      if (uniquenessKey && codeMirror.current) {
+        editorStates[uniquenessKey] = {
+          selections: codeMirror.current.listSelections(),
+          cursor: codeMirror.current.getCursor(),
+          history: codeMirror.current.getHistory(),
+        };
+      }
+    }, [uniquenessKey]);
 
     const initEditor = useCallback(() => {
       if (!textAreaRef.current) {
@@ -228,6 +247,14 @@ export const OneLineEditor = forwardRef<OneLineEditorHandle, OneLineEditorProps>
           id,
         );
       }
+      // Restore the state
+      if (uniquenessKey && editorStates[uniquenessKey]) {
+        const { selections, cursor, history } = editorStates[uniquenessKey];
+        codeMirror.current.setHistory(history);
+        // NOTE: These won't be visible unless the editor is focused
+        codeMirror.current.setCursor(cursor.line, cursor.ch, { scroll: false });
+        codeMirror.current.setSelections(selections, undefined, { scroll: false });
+      }
       // settings.pluginsAllowElevatedAccess is not used here but we want to trigger this effect when it changes
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
@@ -248,6 +275,8 @@ export const OneLineEditor = forwardRef<OneLineEditorHandle, OneLineEditorProps>
       settings.showVariableSourceAndValue,
       eventListeners,
       id,
+      persistState,
+      uniquenessKey,
     ]);
 
     const cleanUpEditor = useCallback(() => {
@@ -259,6 +288,7 @@ export const OneLineEditor = forwardRef<OneLineEditorHandle, OneLineEditorProps>
       initEditor();
     });
     reactUse.useUnmount(() => {
+      persistState();
       cleanUpEditor();
     });
 
@@ -299,10 +329,11 @@ export const OneLineEditor = forwardRef<OneLineEditorHandle, OneLineEditorProps>
         if (onChange) {
           onChange(doc.getValue() || '');
         }
+        persistState();
       }, DEBOUNCE_MILLIS);
       codeMirror.current?.on('changes', fn);
       return () => codeMirror.current?.off('changes', fn);
-    }, [onChange]);
+    }, [onChange, persistState]);
 
     useEffect(() => {
       const unsubscribe = window.main.on(

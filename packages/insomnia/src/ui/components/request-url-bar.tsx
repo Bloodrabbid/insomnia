@@ -303,6 +303,7 @@ export const RequestUrlBar = forwardRef<RequestUrlBarHandle, Props>(
           <OneLineEditor
             id="request-url-bar"
             key={uniquenessKey}
+            uniquenessKey={uniquenessKey}
             ref={inputRef}
             type="text"
             getAutocompleteConstants={handleAutocompleteUrls}
