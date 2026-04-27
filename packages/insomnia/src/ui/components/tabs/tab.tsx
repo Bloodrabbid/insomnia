@@ -198,7 +198,7 @@ export const InsomniaTab = ({
         };
 
         return (
-          <Tooltip delay={1000} message={`${tab.projectName} / ${tab.workspaceName}`} className="h-full">
+          <Tooltip delay={1000} message={`${tab.name} (${tab.projectName} / ${tab.workspaceName})`} className="h-full">
             <div
               onDoubleClick={handleDoubleClick}
               onAuxClick={e => handleAuxClick(e, tab.id)}
