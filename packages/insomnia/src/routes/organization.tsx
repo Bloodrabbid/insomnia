@@ -37,6 +37,7 @@ import { AlertModal } from '~/ui/components/modals/alert-modal';
 import { SettingsModal, showSettingsModal } from '~/ui/components/modals/settings-modal';
 import { OrganizationAvatar } from '~/ui/components/organization-avatar';
 import { PresentUsers } from '~/ui/components/present-users';
+import { QuickEnvironmentSwitcher } from '~/ui/components/quick-environment-switcher';
 import { InsomniaEventStreamProvider } from '~/ui/context/app/insomnia-event-stream-context';
 import { InsomniaTabProvider } from '~/ui/context/app/insomnia-tab-context';
 import { RunnerProvider } from '~/ui/context/app/runner-context';
@@ -244,7 +245,7 @@ const Component = ({ loaderData }: Route.ComponentProps) => {
                   <div className="flex w-[50px] shrink-0 justify-center py-2">
                     <InsomniaLogo />
                   </div>
-                  {!user ? <GitHubStarsButton /> : null}
+                  <QuickEnvironmentSwitcher />
                 </div>
                 <CommandPalette />
                 <div className="flex min-w-min items-center justify-end gap-(--padding-sm) space-x-3 p-2">
