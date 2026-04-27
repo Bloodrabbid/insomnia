@@ -35,6 +35,7 @@ import { showError, showModal } from '../modals';
 import { AlertModal } from '../modals/alert-modal';
 import { AskModal } from '../modals/ask-modal';
 import { GenerateCodeModal } from '../modals/generate-code-modal';
+import { MoveRequestModal } from '../modals/move-request-modal';
 import { PromptModal } from '../modals/prompt-modal';
 import { RequestSettingsModal } from '../modals/request-settings-modal';
 
@@ -74,6 +75,7 @@ export const RequestActionsDropdown = ({
   };
 
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
   const tabNavigate = useTabNavigate();
 
   const openInNewTab = async () => {
@@ -285,6 +287,14 @@ export const RequestActionsDropdown = ({
           icon: 'edit',
         },
         {
+          id: 'MoveToFolder',
+          name: 'Move to Folder',
+          action: () => {
+            setIsMoveModalOpen(true);
+          },
+          icon: 'folder-open',
+        },
+        {
           id: 'Delete',
           name: 'Delete',
           action: deleteRequest,
@@ -379,6 +389,7 @@ export const RequestActionsDropdown = ({
         </Popover>
       </MenuTrigger>
       {isSettingsModalOpen && <RequestSettingsModal request={request} onHide={() => setIsSettingsModalOpen(false)} />}
+      {isMoveModalOpen && <MoveRequestModal requestId={request._id} onHide={() => setIsMoveModalOpen(false)} />}
     </Fragment>
   );
 };
