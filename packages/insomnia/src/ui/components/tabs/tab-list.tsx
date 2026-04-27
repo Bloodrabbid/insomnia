@@ -17,6 +17,7 @@ import { services } from '~/insomnia-data';
 import { useRootLoaderData } from '~/root';
 import { useRequestNewActionFetcher } from '~/routes/organization.$organizationId.project.$projectId.workspace.$workspaceId.debug.request.new';
 import { useInsomniaTab } from '~/ui/hooks/use-insomnia-tab';
+import { useRequestPatcher } from '~/ui/hooks/use-request';
 
 import { type ChangeBufferEvent, type ChangeType, database } from '../../../common/database';
 import { debounce } from '../../../common/misc';
@@ -26,8 +27,10 @@ import { useInsomniaTabContext } from '../../context/app/insomnia-tab-context';
 import { type Size, useResizeObserver } from '../../hooks/use-resize-observer';
 import { Icon } from '../icon';
 import { useDocBodyKeyboardShortcuts } from '../keydown-binder';
+import { showModal } from '../modals';
 import { AddRequestToCollectionModal } from '../modals/add-request-to-collection-modal';
 import { MoveRequestModal } from '../modals/move-request-modal';
+import { PromptModal } from '../modals/prompt-modal';
 import { formatMethodName, getRequestMethodShortHand } from '../tags/method-tag';
 import { type BaseTab, InsomniaTab } from './tab';
 import { TabSessionMenu } from './tab-session-menu';
@@ -44,6 +47,7 @@ export const enum TAB_CONTEXT_MENU_COMMAND {
   CLOSE_ALL = 'Close All',
   CLOSE_OTHERS = 'Close Other Tabs',
   MOVE_TO_FOLDER = 'Move to Folder',
+  RENAME = 'Rename',
 }
 
 export const OrganizationTabList = ({ showActiveStatus = true, currentPage = '' }) => {
@@ -54,6 +58,7 @@ export const OrganizationTabList = ({ showActiveStatus = true, currentPage = '' 
   const [rightScrollDisable, setRightScrollDisable] = useState(false);
 
   const newRequestFetcher = useRequestNewActionFetcher();
+  const patchRequest = useRequestPatcher();
   const { organizationId, projectId } = useParams();
 
   useInsomniaTab({ organizationId: organizationId || '' });
@@ -359,6 +364,19 @@ export const OrganizationTabList = ({ showActiveStatus = true, currentPage = '' 
         }
         case TAB_CONTEXT_MENU_COMMAND.MOVE_TO_FOLDER: {
           setMoveRequestData({ requestId: extra?.currentTabId });
+          break;
+        }
+        case TAB_CONTEXT_MENU_COMMAND.RENAME: {
+          showModal(PromptModal, {
+            title: 'Rename Request',
+            defaultValue: extra?.currentTabName,
+            submitName: 'Rename',
+            label: 'Name',
+            selectText: true,
+            onComplete: (name: string) => {
+              patchRequest(extra?.currentTabId, { name });
+            },
+          });
           break;
         }
         default: {

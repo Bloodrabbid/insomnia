@@ -108,9 +108,13 @@ export const InsomniaTab = ({
         {
           label: TAB_CONTEXT_MENU_COMMAND.MOVE_TO_FOLDER,
         },
+        {
+          label: TAB_CONTEXT_MENU_COMMAND.RENAME,
+        },
       ],
       extra: {
         currentTabId: tab.id,
+        currentTabName: tab.name,
       },
     });
   };
