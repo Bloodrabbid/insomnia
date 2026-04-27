@@ -105,6 +105,9 @@ export const InsomniaTab = ({
         {
           label: TAB_CONTEXT_MENU_COMMAND.CLOSE_OTHERS,
         },
+        {
+          label: TAB_CONTEXT_MENU_COMMAND.MOVE_TO_FOLDER,
+        },
       ],
       extra: {
         currentTabId: tab.id,

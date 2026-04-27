@@ -14,9 +14,9 @@ import { useParams } from 'react-router';
 
 import type { MockRoute, Request } from '~/insomnia-data';
 import { services } from '~/insomnia-data';
+import { useRootLoaderData } from '~/root';
 import { useRequestNewActionFetcher } from '~/routes/organization.$organizationId.project.$projectId.workspace.$workspaceId.debug.request.new';
 import { useInsomniaTab } from '~/ui/hooks/use-insomnia-tab';
-import { useRootLoaderData } from '~/root';
 
 import { type ChangeBufferEvent, type ChangeType, database } from '../../../common/database';
 import { debounce } from '../../../common/misc';
@@ -27,6 +27,7 @@ import { type Size, useResizeObserver } from '../../hooks/use-resize-observer';
 import { Icon } from '../icon';
 import { useDocBodyKeyboardShortcuts } from '../keydown-binder';
 import { AddRequestToCollectionModal } from '../modals/add-request-to-collection-modal';
+import { MoveRequestModal } from '../modals/move-request-modal';
 import { formatMethodName, getRequestMethodShortHand } from '../tags/method-tag';
 import { type BaseTab, InsomniaTab } from './tab';
 import { TabSessionMenu } from './tab-session-menu';
@@ -42,10 +43,12 @@ export interface OrganizationTabs {
 export const enum TAB_CONTEXT_MENU_COMMAND {
   CLOSE_ALL = 'Close All',
   CLOSE_OTHERS = 'Close Other Tabs',
+  MOVE_TO_FOLDER = 'Move to Folder',
 }
 
 export const OrganizationTabList = ({ showActiveStatus = true, currentPage = '' }) => {
   const [showAddRequestModal, setShowAddRequestModal] = useState(false);
+  const [moveRequestData, setMoveRequestData] = useState<{ requestId: string } | null>(null);
   const [isOverFlow, setIsOverFlow] = useState(false);
   const [leftScrollDisable, setLeftScrollDisable] = useState(false);
   const [rightScrollDisable, setRightScrollDisable] = useState(false);
@@ -354,6 +357,10 @@ export const OrganizationTabList = ({ showActiveStatus = true, currentPage = '' 
           closeOtherTabs?.(extra?.currentTabId);
           break;
         }
+        case TAB_CONTEXT_MENU_COMMAND.MOVE_TO_FOLDER: {
+          setMoveRequestData({ requestId: extra?.currentTabId });
+          break;
+        }
         default: {
           break;
         }
@@ -493,6 +500,12 @@ export const OrganizationTabList = ({ showActiveStatus = true, currentPage = '' 
         </MenuTrigger>
       </div>
       {showAddRequestModal && <AddRequestToCollectionModal onHide={() => setShowAddRequestModal(false)} />}
+      {moveRequestData && (
+        <MoveRequestModal
+          requestId={moveRequestData.requestId}
+          onHide={() => setMoveRequestData(null)}
+        />
+      )}
     </div>
   );
 };
