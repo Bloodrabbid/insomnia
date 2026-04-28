@@ -4,17 +4,17 @@ import { useParams } from 'react-router';
 
 import { useSetActiveEnvironmentFetcher } from '~/routes/organization.$organizationId.project.$projectId.workspace.$workspaceId.environment.set-active';
 
-import { useWorkspaceLoaderData } from '../../routes/organization.$organizationId.project.$projectId.workspace.$workspaceId';
+import { type WorkspaceLoaderData, useWorkspaceLoaderData } from '~/routes/organization.$organizationId.project.$projectId.workspace.$workspaceId';
 import uiEventBus from '../event-bus';
 import { Icon } from './icon';
 
-export const QuickEnvironmentSwitcher = () => {
-  const workspaceData = useWorkspaceLoaderData();
-  const { organizationId, projectId, workspaceId } = useParams() as {
-    organizationId: string;
-    projectId: string;
-    workspaceId: string;
-  };
+export const QuickEnvironmentSwitcher = ({ workspaceData: propsWorkspaceData }: { workspaceData?: WorkspaceLoaderData | null }) => {
+  const routeWorkspaceData = useWorkspaceLoaderData();
+  const workspaceData = propsWorkspaceData || routeWorkspaceData;
+
+  const organizationId = workspaceData?.activeProject.parentId || '';
+  const projectId = workspaceData?.activeProject._id || '';
+  const workspaceId = workspaceData?.activeWorkspace._id || '';
 
   const setActiveEnvironmentFetcher = useSetActiveEnvironmentFetcher();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -63,21 +63,25 @@ export const QuickEnvironmentSwitcher = () => {
   );
 
 
-  // Don't render if no workspace is active
-  if (!workspaceData || !baseEnvironment || !activeEnvironment) {
+  const { organizationId: paramsOrgId } = useParams() as { organizationId: string };
+  const isScratchpadOrg = paramsOrgId === 'org_scratchpad';
+
+  // Don't render if no workspace is active at all and not in scratchpad org
+  if (!workspaceData && !isScratchpadOrg) {
     return null;
   }
 
-  const activeSubEnvironment = subEnvironments.find(e => e._id === activeEnvironment._id);
-  const displayName = activeSubEnvironment?.name || 'Base';
-  const displayColor = activeEnvironment.color || 'var(--color-font)';
+  const activeSubEnvironment = subEnvironments.find(e => e._id === activeEnvironment?._id);
+  const isScratchpad = (workspaceData?.activeWorkspace && workspaceId === 'wrk_scratchpad') || isScratchpadOrg;
+  const displayName = activeSubEnvironment?.name || (isScratchpad ? 'Scratchpad' : 'Base');
+  const displayColor = activeEnvironment?.color || 'var(--color-font)';
 
   return (
     <div ref={containerRef} onWheel={handleWheel}>
       <DialogTrigger>
         <Button
           aria-label="Quick Environment Switcher"
-          className="flex items-center gap-2 rounded-sm border border-solid border-(--hl-md) px-3 py-1 text-xs font-medium text-(--color-font) transition-all hover:bg-(--hl-xs) focus:outline-hidden"
+          className="flex min-w-[100px] items-center gap-2 rounded-sm border border-solid border-(--hl-md) px-3 py-1 text-xs font-medium text-(--color-font) transition-all hover:bg-(--hl-xs) focus:outline-hidden"
         >
           <span
             className="h-2 w-2 rounded-full"

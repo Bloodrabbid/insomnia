@@ -86,6 +86,9 @@
 - **Перемещение запросов**: `packages/insomnia/src/ui/components/modals/move-request-modal.tsx`
   *(Интерфейс выбора папки. Используется в `tab-list.tsx` и `request-actions-dropdown.tsx`)*
 
+- **Быстрый переключатель окружений (Стендов)**: `packages/insomnia/src/ui/components/quick-environment-switcher.tsx`
+  *(Переключатель в хедере вместо GitHub Stars. Поддерживает Scratchpad и смену стенда колёсиком мыши)*
+
 ---
 
 ## Сохранение изменений

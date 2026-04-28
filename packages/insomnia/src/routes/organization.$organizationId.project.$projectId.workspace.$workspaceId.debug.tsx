@@ -98,6 +98,7 @@ import { PromptModal } from '~/ui/components/modals/prompt-modal';
 import { RequestSettingsModal } from '~/ui/components/modals/request-settings-modal';
 import { CertificatesModal } from '~/ui/components/modals/workspace-certificates-modal';
 import { WorkspaceEnvironmentsEditModal } from '~/ui/components/modals/workspace-environments-edit-modal';
+import { QuickEnvironmentSwitcher } from '~/ui/components/quick-environment-switcher';
 import { GrpcRequestPane } from '~/ui/components/panes/grpc-request-pane';
 import { GrpcResponsePane } from '~/ui/components/panes/grpc-response-pane';
 import { PlaceholderRequestPane } from '~/ui/components/panes/placeholder-request-pane';
@@ -828,6 +829,9 @@ const Debug = () => {
                 </Breadcrumb>
                 <Breadcrumb className="flex h-full items-center gap-2 truncate text-(--color-font) outline-hidden select-none data-focused:outline-hidden">
                   <WorkspaceDropdown />
+                </Breadcrumb>
+                <Breadcrumb className="flex h-full items-center gap-2 outline-hidden select-none data-focused:outline-hidden">
+                  <QuickEnvironmentSwitcher />
                 </Breadcrumb>
                 <Breadcrumb className="mr-2.5 ml-auto flex h-full items-center gap-2 justify-self-end truncate text-sm text-(--color-font) outline-hidden select-none data-focused:outline-hidden">
                   <NavLink

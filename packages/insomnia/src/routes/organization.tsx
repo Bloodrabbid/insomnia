@@ -245,7 +245,6 @@ const Component = ({ loaderData }: Route.ComponentProps) => {
                   <div className="flex w-[50px] shrink-0 justify-center py-2">
                     <InsomniaLogo />
                   </div>
-                  <QuickEnvironmentSwitcher />
                 </div>
                 <CommandPalette />
                 <div className="flex min-w-min items-center justify-end gap-(--padding-sm) space-x-3 p-2">
