@@ -36,6 +36,7 @@ import { useTimeoutWhen } from '../hooks/use-timeout-when';
 import { Dropdown, type DropdownHandle, DropdownItem, DropdownSection, ItemContent } from './base/dropdown';
 import { MethodDropdown } from './dropdowns/method-dropdown';
 import { createKeybindingsHandler, useDocBodyKeyboardShortcuts } from './keydown-binder';
+import { Icon } from './icon';
 import { showModal } from './modals';
 import { AlertModal } from './modals/alert-modal';
 import { GenerateCodeModal } from './modals/generate-code-modal';
@@ -290,8 +291,73 @@ export const RequestUrlBar = forwardRef<RequestUrlBarHandle, Props>(
     const isEventStreamOpen = useReadyState({ requestId: activeRequest._id, protocol: 'curl' });
     const isGraphQLSubscriptionOpen = useReadyState({ requestId: activeRequest._id, protocol: 'webSocket' });
     const isCancellable = currentInterval || currentTimeout || isEventStreamOpen || isGraphQLSubscriptionOpen;
+    const { baseEnvironment, subEnvironments } = useWorkspaceLoaderData()!;
+
+    // Suggest variables for hardcoded parts of the URL
+    const [suggestion, setSuggestion] = useState<{ name: string; value: string; envName: string } | null>(null);
+
+    useEffect(() => {
+      if (!url || url.includes('{{')) {
+        setSuggestion(null);
+        return;
+      }
+
+      const checkEnv = (env: any, envName: string) => {
+        if (!env?.data) return false;
+        for (const [name, value] of Object.entries(env.data)) {
+          if (typeof value === 'string' && value.length > 3 && url.includes(value)) {
+            setSuggestion({ name, value, envName });
+            return true;
+          }
+        }
+        return false;
+      };
+
+      // Check active environment first for highest priority
+      if (checkEnv(activeEnvironment, activeEnvironment?.name || 'Active')) return;
+
+      // Check base environment
+      if (checkEnv(baseEnvironment, 'Base Environment')) return;
+
+      // Check all sub-environments
+      for (const env of subEnvironments) {
+        if (checkEnv(env, env.name)) return;
+      }
+
+      setSuggestion(null);
+    }, [url, activeEnvironment, baseEnvironment, subEnvironments]);
+
+    const applySuggestion = () => {
+      if (suggestion) {
+        const newUrl = url.replace(suggestion.value, `{{ _.${suggestion.name} }}`);
+        patchRequest(requestId, { url: newUrl });
+        inputRef.current?.setValue(newUrl);
+        setSuggestion(null);
+      }
+    };
+
     return (
-      <div className="flex w-full items-stretch justify-between self-stretch">
+      <div className="relative flex w-full items-stretch justify-between self-stretch">
+        {suggestion && (
+          <div className="absolute top-full left-[120px] z-50 mt-1 flex items-center gap-2 rounded-xs border border-solid border-(--hl-md) bg-(--color-bg) px-3 py-2 text-xs text-(--color-font) shadow-md">
+            <Icon icon="magic" className="text-(--color-surprise)" />
+            <span>
+              Found <strong>{suggestion.name}</strong> ({suggestion.envName}): <span className="opacity-70">{suggestion.value}</span>
+            </span>
+            <Button
+              onPress={applySuggestion}
+              className="ml-2 rounded-xs bg-(--color-surprise) px-2 py-1 font-bold text-(--color-font-surprise) hover:opacity-90"
+            >
+              Use Variable
+            </Button>
+            <Button
+              onPress={() => setSuggestion(null)}
+              className="ml-1 rounded-xs p-1 opacity-50 hover:opacity-100"
+            >
+              <Icon icon="times" />
+            </Button>
+          </div>
+        )}
         <div className="flex items-center">
           <MethodDropdown
             ref={methodDropdownRef}

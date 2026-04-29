@@ -188,7 +188,7 @@ export async function clientLoader({ params, request }: Route.ClientLoaderArgs) 
       );
     }
   }
-  return null;
+  return {};
 }
 
 const WebSocketSpinner = ({ requestId }: { requestId: string }) => {
