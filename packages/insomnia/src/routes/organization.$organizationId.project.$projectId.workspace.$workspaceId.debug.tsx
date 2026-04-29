@@ -265,6 +265,7 @@ const Debug = () => {
 
   const deleteRequestFetcher = useRequestDeleteActionFetcher();
   const duplicateRequestFetcher = useRequestDuplicateActionFetcher();
+  const duplicateRequestGroupFetcher = useRequestGroupDuplicateActionFetcher();
   const createRequestFetcher = useRequestNewActionFetcher();
   const createRequestGroupFetcher = useRequestGroupNewActionFetcher();
 
@@ -504,8 +505,6 @@ const Debug = () => {
     },
   });
 
-  const duplicateRequestFetcher = useRequestDuplicateActionFetcher();
-  const duplicateRequestGroupFetcher = useRequestGroupDuplicateActionFetcher();
 
   const handleDuplicate = (doc: Request | RequestGroup | GrpcRequest | WebSocketRequest | SocketIORequest) => {
     showModal(PromptModal, {
