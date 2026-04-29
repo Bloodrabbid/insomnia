@@ -68,6 +68,7 @@ import { useRequestLoaderData } from '~/routes/organization.$organizationId.proj
 import { useRequestDuplicateActionFetcher } from '~/routes/organization.$organizationId.project.$projectId.workspace.$workspaceId.debug.request.$requestId.duplicate';
 import { useRequestDeleteActionFetcher } from '~/routes/organization.$organizationId.project.$projectId.workspace.$workspaceId.debug.request.delete';
 import { useRequestNewActionFetcher } from '~/routes/organization.$organizationId.project.$projectId.workspace.$workspaceId.debug.request.new';
+import { useRequestGroupDuplicateActionFetcher } from '~/routes/organization.$organizationId.project.$projectId.workspace.$workspaceId.debug.request-group.duplicate';
 import { useRequestGroupNewActionFetcher } from '~/routes/organization.$organizationId.project.$projectId.workspace.$workspaceId.debug.request-group.new';
 import Runner from '~/routes/organization.$organizationId.project.$projectId.workspace.$workspaceId.debug.runner';
 import Tutorial, {
@@ -502,6 +503,37 @@ const Debug = () => {
       }
     },
   });
+
+  const duplicateRequestFetcher = useRequestDuplicateActionFetcher();
+  const duplicateRequestGroupFetcher = useRequestGroupDuplicateActionFetcher();
+
+  const handleDuplicate = (doc: Request | RequestGroup | GrpcRequest | WebSocketRequest | SocketIORequest) => {
+    showModal(PromptModal, {
+      title: isRequestGroup(doc) ? 'Duplicate Folder' : 'Duplicate Request',
+      defaultValue: doc.name,
+      submitName: 'Create',
+      label: 'New Name',
+      selectText: true,
+      onComplete: async (name: string) => {
+        if (isRequestGroup(doc)) {
+          duplicateRequestGroupFetcher.submit({
+            organizationId,
+            projectId,
+            workspaceId,
+            requestGroupData: { _id: doc._id, name },
+          });
+        } else {
+          duplicateRequestFetcher.submit({
+            organizationId,
+            projectId,
+            workspaceId,
+            requestId: doc._id,
+            name,
+          });
+        }
+      },
+    });
+  };
 
   const isRealtimeRequest =
     activeRequest &&
@@ -1201,6 +1233,7 @@ const Debug = () => {
                         patchGroup,
                         patchRequest,
                         createRequest,
+                        duplicateItem: handleDuplicate,
                         activeEnvironment,
                         activeProject,
                         activeWorkspace,
@@ -1438,6 +1471,7 @@ const CollectionGridListItem = ({
   patchGroup,
   patchRequest,
   createRequest,
+  duplicateItem,
   activeEnvironment,
   activeProject,
   activeWorkspace,
@@ -1456,6 +1490,7 @@ const CollectionGridListItem = ({
     parentId: string;
     req?: Partial<Request>;
   }) => void;
+  duplicateItem: (doc: Request | RequestGroup | GrpcRequest | WebSocketRequest | SocketIORequest) => void;
   activeEnvironment: Environment;
   activeProject: Project;
   activeWorkspace: Workspace;
@@ -1659,6 +1694,24 @@ const CollectionGridListItem = ({
             </Tooltip>
           </TooltipTrigger>
         )}
+        <TooltipTrigger>
+          <Button
+            onPress={e => {
+              e.continuePropagation();
+              duplicateItem(item.doc);
+            }}
+            aria-label="Duplicate"
+            className="hidden aspect-square h-6 items-center justify-center rounded-xs text-sm text-(--color-font) ring-1 ring-transparent transition-all group-hover:flex group-focus:flex hover:bg-(--hl-xs) focus:ring-(--hl-md) focus:ring-inset aria-pressed:flex aria-pressed:bg-(--hl-sm) data-focused:flex"
+          >
+            <Icon icon="copy" />
+          </Button>
+          <Tooltip
+            offset={8}
+            className="max-h-[85vh] max-w-xs overflow-y-auto rounded-md border border-solid border-(--hl-sm) bg-(--color-bg) px-4 py-2 text-sm text-(--color-font) shadow-lg select-none focus:outline-hidden"
+          >
+            <span>Duplicate</span>
+          </Tooltip>
+        </TooltipTrigger>
         {isRequestGroup(item.doc) ? (
           <RequestGroupActionsDropdown
             requestGroup={item.doc}
