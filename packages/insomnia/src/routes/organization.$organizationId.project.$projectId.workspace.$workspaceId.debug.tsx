@@ -1200,6 +1200,7 @@ const Debug = () => {
                         searchParams,
                         patchGroup,
                         patchRequest,
+                        createRequest,
                         activeEnvironment,
                         activeProject,
                         activeWorkspace,
@@ -1436,6 +1437,7 @@ const CollectionGridListItem = ({
   searchParams,
   patchGroup,
   patchRequest,
+  createRequest,
   activeEnvironment,
   activeProject,
   activeWorkspace,
@@ -1449,6 +1451,11 @@ const CollectionGridListItem = ({
   searchParams: URLSearchParams;
   patchGroup: (requestGroupId: string, patch: Partial<RequestGroup>) => void;
   patchRequest: (requestId: string, patch: Partial<GrpcRequest> | Partial<Request> | Partial<WebSocketRequest>) => void;
+  createRequest: (args: {
+    requestType: CreateRequestType;
+    parentId: string;
+    req?: Partial<Request>;
+  }) => void;
   activeEnvironment: Environment;
   activeProject: Project;
   activeWorkspace: Workspace;
@@ -1628,6 +1635,29 @@ const CollectionGridListItem = ({
             icon="thumb-tack"
             onDoubleClick={() => patchRequestMeta(item.doc._id, { pinned: !item.pinned })}
           />
+        )}
+        {isRequestGroup(item.doc) && (
+          <TooltipTrigger>
+            <Button
+              onPress={e => {
+                e.continuePropagation();
+                createRequest({
+                  requestType: 'HTTP',
+                  parentId: item.doc._id,
+                });
+              }}
+              aria-label="Add request"
+              className="hidden aspect-square h-6 items-center justify-center rounded-xs text-sm text-(--color-font) ring-1 ring-transparent transition-all group-hover:flex group-focus:flex hover:bg-(--hl-xs) focus:ring-(--hl-md) focus:ring-inset aria-pressed:flex aria-pressed:bg-(--hl-sm) data-focused:flex"
+            >
+              <Icon icon="plus" />
+            </Button>
+            <Tooltip
+              offset={8}
+              className="max-h-[85vh] max-w-xs overflow-y-auto rounded-md border border-solid border-(--hl-sm) bg-(--color-bg) px-4 py-2 text-sm text-(--color-font) shadow-lg select-none focus:outline-hidden"
+            >
+              <span>Add request</span>
+            </Tooltip>
+          </TooltipTrigger>
         )}
         {isRequestGroup(item.doc) ? (
           <RequestGroupActionsDropdown
