@@ -703,9 +703,34 @@ function getMcpRequest(file: InsomniaFile): WithExportType<McpRequest>[] {
   return [commonProps];
 }
 
+function sanitizeInsomniaYaml(rawData: string): string {
+  // Regex to find YAML keys with unquoted template values starting with {{
+  // We look for values that start with {{ and wrap them in quotes if they aren't already.
+  return rawData.split('\n').map(line => {
+    // Match line that looks like '  - url: {{foo}}' or '  url: {{foo}}'
+    const match = line.match(/^(\s*-?\s*[\w.]+:\s*)({{.*?}}.*)$/);
+    if (match) {
+      const prefix = match[1];
+      const value = match[2].trim();
+
+      // If value is already quoted, don't touch it
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        return line;
+      }
+
+      // Quote the value and escape existing double quotes
+      return `${prefix}"${value.replace(/"/g, '\\"')}"`;
+    }
+    return line;
+  }).join('\n');
+}
+
 function importData(rawData: string) {
+  // Fix common YAML syntax issues in Insomnia files before parsing
+  const sanitizedData = sanitizeInsomniaYaml(rawData);
+
   // Apply schema migration before parsing to handle older schema versions
-  const migratedData = migrateToLatestYaml(rawData);
+  const migratedData = migrateToLatestYaml(sanitizedData);
   const fileSchemaParser = InsomniaFileSchema.safeParse(parse(migratedData));
 
   if (fileSchemaParser.success) {
