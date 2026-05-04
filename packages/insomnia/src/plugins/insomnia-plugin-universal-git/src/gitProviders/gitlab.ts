@@ -1,0 +1,120 @@
+import axios from 'axios';
+import { UserConfig } from '../interfaces/UserConfig';
+
+export class Gitlab {
+
+  constructor (private config) {}
+
+  authenticate() {
+    return axios.create({
+      baseURL: `${this.config.baseUrl}`,
+      timeout: 5000,
+      headers: { Authorization: `Bearer ${this.config.token}` },
+      responseType: 'json',
+      // @ts-ignore
+      httpsAgent: new (require('https').Agent)({  
+        rejectUnauthorized: false 
+      })
+    });
+  }
+
+  private async initRemoteConfigFile() {
+    try {
+      await this.authenticate().post(
+        `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/repository/files/${this.config.configFileName || 'config.json'}`,
+        {
+          "branch": this.config.branch,
+          "content": "{}",
+          "commit_message": `Init new config file ${this.config.configFileName || 'config.json'}`
+        }
+      );
+    } catch(e) {
+      console.error(e.response);
+      throw 'Creating a new file via GitLab API failed.'
+   }
+  }
+
+  async createRemoteBranchFromCurrent(branchName) {
+    try {
+      await this.authenticate().post(
+        `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/repository/branches?branch=${branchName}&ref=${this.config.branch}`,
+      );
+    } catch(e) {
+      console.error(e.response);
+      throw 'Creating a new branch via GitLab API failed.'
+   }
+  }
+
+  async fetchBranches() {
+    if (!this.config?.baseUrl || !this.config?.projectId || !this.config?.token) {
+      return [];
+    }
+    try {
+      const response = await this.authenticate().get(
+        `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/repository/branches`
+      );
+
+      const branches = response.data.map((o) => o.name);
+
+      return branches;
+    } catch(e) {
+      console.error('GitLab Fetch Branches Error:', e.response?.status, e.response?.data || e.message);
+      throw 'Fetching the projects branches via GitLab API failed.'
+    }
+  }
+
+  async pullWorkspace() {
+    const url = `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/repository/files/${encodeURIComponent(this.config.configFileName || 'config.json')}/raw?ref=${encodeURIComponent(this.config.branch)}`;
+    console.log('Plugin: Fetching from GitLab URL:', url);
+    
+    try {
+      const response = await this.authenticate().get(url, { responseType: 'text' });
+      console.log('Plugin: GitLab Response Status:', response.status);
+      console.log('Plugin: GitLab Response Headers:', response.headers);
+      return(response.data);
+    } catch (e) {
+        console.error('Plugin: GitLab API Error Details:', e.response?.status, e.response?.data || e.message);
+        throw `Fetching the workspace via GitLab API failed (Status: ${e.response?.status}).`;
+    }
+  }
+
+  async pushWorkspace(content, messageCommit) {
+   try {
+    await this.authenticate().post(
+      `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/repository/commits`,
+      {
+        "branch": this.config.branch,
+        "commit_message": messageCommit,
+        "actions": [
+          {
+            "action": "update",
+            "file_path": this.config.configFileName || 'config.json',
+            "content": content
+          }
+        ]
+      },
+    );
+   } catch(e) {
+      if (e.response.data.message === "A file with this name doesn't exist") {
+        await this.initRemoteConfigFile()
+        await this.authenticate().post(
+          `${this.config.baseUrl}/api/v4/projects/${this.config.projectId}/repository/commits`,
+          {
+            "branch": this.config.branch,
+            "commit_message": messageCommit,
+            "actions": [
+              {
+                "action": "update",
+                "file_path": this.config.configFileName || 'config.json',
+                "content": content
+              }
+            ]
+          },
+        );
+      } else {
+        console.error("GitLab Push Error:", e.response?.status, e.response?.data || e.message);
+        throw 'Pushing the workspace via GitLab API failed.'
+      }
+   }
+  }
+}
