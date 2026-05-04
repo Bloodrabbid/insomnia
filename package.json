@@ -20,7 +20,8 @@
     "packages/insomnia-api",
     "packages/insomnia-inso",
     "packages/insomnia-smoke-test",
-    "packages/insomnia-scripting-environment"
+    "packages/insomnia-scripting-environment",
+    "packages/insomnia/src/plugins/insomnia-plugin-universal-git"
   ],
   "scripts": {
     "dev": "npm start -w insomnia",
@@ -42,7 +43,7 @@
     "test:smoke:package": "npm run test:package -w insomnia-smoke-test -- --project=Smoke",
     "test:crit:package": "npm run test:package -w insomnia-smoke-test -- --project=Critical",
     "test:crit:dev": "npm run test:dev -w insomnia-smoke-test -- --project=Critical",
-    "postinstall": "patch-package && npm run verify-bundle-plugins -w insomnia && npm run install-libcurl-electron",
+    "postinstall": "patch-package && npm run verify-bundle-plugins -w insomnia && npm run install-libcurl-electron && npm run build:prod -w insomnia-plugin-universal-git",
     "check-cycle-references": "madge --circular --extensions ts,tsx packages"
   },
   "devDependencies": {
