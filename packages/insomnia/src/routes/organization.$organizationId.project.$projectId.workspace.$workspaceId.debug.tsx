@@ -82,6 +82,7 @@ import { RequestActionsDropdown } from '~/ui/components/dropdowns/request-action
 import { RequestGroupActionsDropdown } from '~/ui/components/dropdowns/request-group-actions-dropdown';
 import { WorkspaceDropdown } from '~/ui/components/dropdowns/workspace-dropdown';
 import { WorkspaceSyncDropdown } from '~/ui/components/dropdowns/workspace-sync-dropdown';
+import { GitLabSyncDropdown } from '~/ui/components/dropdowns/gitlab-sync-dropdown';
 import { EditableInput } from '~/ui/components/editable-input';
 import { EnvironmentPicker } from '~/ui/components/environment-picker';
 import { ErrorBoundary } from '~/ui/components/error-boundary';
@@ -864,7 +865,7 @@ const Debug = () => {
                 <Breadcrumb className="flex h-full items-center gap-2 outline-hidden select-none data-focused:outline-hidden">
                   <QuickEnvironmentSwitcher />
                 </Breadcrumb>
-                <Breadcrumb className="mr-2.5 ml-auto flex h-full items-center gap-2 justify-self-end truncate text-sm text-(--color-font) outline-hidden select-none data-focused:outline-hidden">
+                <Breadcrumb className="ml-auto flex h-full items-center gap-2 justify-self-end truncate text-sm text-(--color-font) outline-hidden select-none data-focused:outline-hidden">
                   <NavLink
                     data-testid="run-collection-btn-quick"
                     className="flex h-7 shrink-0 items-center justify-center gap-2 rounded-xs px-2 py-1 text-sm text-(--color-font) ring-1 ring-transparent outline-hidden transition-all hover:bg-(--hl-xs) focus:ring-(--hl-md) focus:ring-inset aria-pressed:bg-(--hl-sm) aria-[current]:hidden data-focused:outline-hidden"
@@ -873,6 +874,9 @@ const Debug = () => {
                     <Icon icon="play" />
                     <span className="truncate">Run</span>
                   </NavLink>
+                </Breadcrumb>
+                <Breadcrumb className="mr-2.5 flex h-full items-center gap-2 text-sm text-(--color-font) outline-hidden select-none data-focused:outline-hidden">
+                  <GitLabSyncDropdown />
                 </Breadcrumb>
               </Breadcrumbs>
             </div>

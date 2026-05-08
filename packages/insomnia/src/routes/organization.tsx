@@ -25,7 +25,7 @@ import { useUntrackedProjectsLoaderFetcher } from '~/routes/untracked-projects';
 import { SegmentEvent } from '~/ui/analytics';
 import { getLoginUrl } from '~/ui/auth-session-provider.client';
 import { CommandPalette } from '~/ui/components/command-palette';
-import { GitHubStarsButton } from '~/ui/components/github-stars-button';
+
 import { HeaderInviteButton } from '~/ui/components/header-invite-button';
 import { HeaderPlanIndicator } from '~/ui/components/header-plan-indicator';
 import { HeaderUserButton } from '~/ui/components/header-user-button';
@@ -37,7 +37,7 @@ import { AlertModal } from '~/ui/components/modals/alert-modal';
 import { SettingsModal, showSettingsModal } from '~/ui/components/modals/settings-modal';
 import { OrganizationAvatar } from '~/ui/components/organization-avatar';
 import { PresentUsers } from '~/ui/components/present-users';
-import { QuickEnvironmentSwitcher } from '~/ui/components/quick-environment-switcher';
+
 import { InsomniaEventStreamProvider } from '~/ui/context/app/insomnia-event-stream-context';
 import { InsomniaTabProvider } from '~/ui/context/app/insomnia-tab-context';
 import { RunnerProvider } from '~/ui/context/app/runner-context';

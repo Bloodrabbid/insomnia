@@ -133,6 +133,7 @@ export interface ScanResult {
   unitTestSuites?: UnitTestSuite[];
   mockRoutes?: MockRoute[];
   mcpRequests?: McpRequest[];
+  resources?: BaseModel[];
   type?: InsomniaImporter;
   oriFileName?: string;
   errors: string[];
@@ -275,6 +276,7 @@ export async function scanResources(importEntries: ImportEntry[]): Promise<ScanR
         cookieJars,
         mockRoutes,
         mcpRequests,
+        resources,
         oriFileName,
         errors: [],
       };

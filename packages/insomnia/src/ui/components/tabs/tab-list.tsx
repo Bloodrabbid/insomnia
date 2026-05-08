@@ -329,6 +329,7 @@ export const OrganizationTabList = ({ showActiveStatus = true, currentPage = '' 
   const debouncedOnResize = debounce<(size: Size) => void>(onResize, 500);
 
   useResizeObserver(tabListWrapperRef, debouncedOnResize);
+  useResizeObserver(tabListInnerRef, debouncedOnResize);
 
   const scrollLeft = () => {
     if (!tabListWrapperRef.current) {
@@ -409,16 +410,41 @@ export const OrganizationTabList = ({ showActiveStatus = true, currentPage = '' 
     calculateScrollButtonStatus(e.target as HTMLDivElement);
   };
 
-  const handleWheel = (e: React.WheelEvent) => {
-    if (!tabListWrapperRef.current || !isOverFlow) {
+  // Use native wheel listener with { passive: false } so preventDefault() actually works.
+  // React's onWheel is registered as passive in Chromium/Electron, which silently ignores preventDefault.
+  useEffect(() => {
+    const el = tabListWrapperRef.current;
+    if (!el) {
       return;
     }
 
-    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-      tabListWrapperRef.current.scrollLeft += e.deltaY;
-      e.preventDefault();
-    }
-  };
+    const handleWheel = (e: WheelEvent) => {
+      if (!isOverFlow) {
+        return;
+      }
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        el.scrollLeft += e.deltaY;
+        e.preventDefault();
+      }
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+    };
+  }, [isOverFlow]);
+
+  // Recalculate overflow when tabs are added/removed (e.g. session load)
+  useEffect(() => {
+    // Small delay to let the DOM settle after batch tab updates
+    const timer = requestAnimationFrame(() => {
+      onResize();
+      if (tabListWrapperRef.current) {
+        calculateScrollButtonStatus(tabListWrapperRef.current);
+      }
+    });
+    return () => cancelAnimationFrame(timer);
+  }, [groupedTabList.length]);
 
   useEffect(() => {
     if (isOverFlow && tabListWrapperRef?.current) {
@@ -458,7 +484,6 @@ export const OrganizationTabList = ({ showActiveStatus = true, currentPage = '' 
         className="hide-scrollbars flex-1 min-w-0 overflow-x-scroll"
         ref={tabListWrapperRef}
         onScroll={handleScroll}
-        onWheel={handleWheel}
       >
         <GridList
           aria-label="Insomnia Tabs"

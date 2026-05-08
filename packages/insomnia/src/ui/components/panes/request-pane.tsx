@@ -43,7 +43,7 @@ interface Props {
 }
 
 export const RequestPane: FC<Props> = ({ environmentId, settings, onPaste }) => {
-  const { activeRequest, activeRequestMeta } = useRequestLoaderData() as RequestLoaderData;
+  const { activeRequest } = useRequestLoaderData() as RequestLoaderData;
   const { workspaceId, requestId } = useParams() as { workspaceId: string; requestId: string };
 
   const patchSettings = useSettingsPatcher();
@@ -80,7 +80,7 @@ export const RequestPane: FC<Props> = ({ environmentId, settings, onPaste }) => 
 
   const { activeEnvironment, vcsVersion } = useWorkspaceLoaderData()!;
   // Force re-render when we switch requests, the environment gets modified, or the (Git|Sync)VCS version changes
-  const uniqueKey = `${activeEnvironment?.modified}::${requestId}::${gitVersion}::${vcsVersion}::${activeRequestMeta?.activeResponseId}`;
+  const uniqueKey = `${activeEnvironment?.modified}::${requestId}::${gitVersion}::${vcsVersion}`;
 
   if (!activeRequest) {
     return <PlaceholderRequestPane />;
