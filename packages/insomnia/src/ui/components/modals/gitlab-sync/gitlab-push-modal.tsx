@@ -20,7 +20,7 @@ import { Icon } from '~/ui/components/icon';
 import { TreeSelector } from '~/ui/components/gitlab-sync/tree-selector';
 import { type GitLabSyncConfig, loadGitLabConfig } from '~/ui/services/gitlab-sync-config';
 import { GitLabSyncService } from '~/ui/services/gitlab-sync';
-import { type TreeNode, collectAllIds, filterV5Collection, parseCollectionToTree } from '~/ui/services/gitlab-sync-utils';
+import { type TreeNode, collectAllIds, filterV5Collection, filterV5EnvironmentsBySelection, parseCollectionToTree, parseEnvironmentsToTree } from '~/ui/services/gitlab-sync-utils';
 
 interface GitLabPushModalProps {
   onClose: () => void;
@@ -38,6 +38,11 @@ export const GitLabPushModal: FC<GitLabPushModalProps> = ({ onClose }) => {
   const [rawV5Data, setRawV5Data] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  const [envTree, setEnvTree] = useState<TreeNode[]>([]);
+  const [selectedEnvIds, setSelectedEnvIds] = useState<Set<string>>(new Set());
+
+  const [pushRequests, setPushRequests] = useState(true);
+  const [pushEnvironments, setPushEnvironments] = useState(true);
   const [commitMessage, setCommitMessage] = useState('Update workspace');
   const [loading, setLoading] = useState(true);
   const [pushing, setPushing] = useState(false);
@@ -84,8 +89,12 @@ export const GitLabPushModal: FC<GitLabPushModalProps> = ({ onClose }) => {
         if (parsed?.collection) {
           const treeData = parseCollectionToTree(parsed.collection);
           setTree(treeData);
-          // По умолчанию выбираем всё
           setSelectedIds(collectAllIds(treeData));
+
+          // Парсим окружения
+          const envTreeData = parseEnvironmentsToTree(parsed);
+          setEnvTree(envTreeData);
+          setSelectedEnvIds(collectAllIds(envTreeData));
         }
       } catch (e: any) {
         setError(e.message);
@@ -103,14 +112,28 @@ export const GitLabPushModal: FC<GitLabPushModalProps> = ({ onClose }) => {
     setSuccess('');
 
     try {
-      // Фильтруем коллекцию по выбранным элементам
-      let dataToSend = rawV5Data;
-      const allIds = collectAllIds(tree);
+      let dataToSend = { ...rawV5Data };
 
-      if (selectedIds.size < allIds.size) {
-        // Частичный push — фильтруем
-        const filteredCollection = filterV5Collection(rawV5Data.collection || [], selectedIds);
-        dataToSend = { ...rawV5Data, collection: filteredCollection };
+      // 1. Фильтрация запросов
+      if (!pushRequests) {
+        dataToSend.collection = [];
+      } else {
+        const allIds = collectAllIds(tree);
+        if (selectedIds.size < allIds.size) {
+          dataToSend.collection = filterV5Collection(rawV5Data.collection || [], selectedIds);
+        }
+      }
+
+      // 2. Фильтрация окружений
+      if (!pushEnvironments) {
+        dataToSend.environments = undefined;
+      } else {
+        const allEnvIds = collectAllIds(envTree);
+        if (selectedEnvIds.size === 0) {
+          dataToSend.environments = undefined;
+        } else if (selectedEnvIds.size < allEnvIds.size) {
+          dataToSend = filterV5EnvironmentsBySelection(dataToSend, selectedEnvIds);
+        }
       }
 
       // Сериализуем обратно в YAML
@@ -132,7 +155,7 @@ export const GitLabPushModal: FC<GitLabPushModalProps> = ({ onClose }) => {
     } finally {
       setPushing(false);
     }
-  }, [config, rawV5Data, selectedIds, tree, commitMessage, branchInput, selectedBranch, onClose]);
+  }, [config, rawV5Data, pushRequests, tree, selectedIds, pushEnvironments, envTree, selectedEnvIds, commitMessage, branchInput, selectedBranch, onClose]);
 
   return (
     <ModalOverlay
@@ -143,7 +166,7 @@ export const GitLabPushModal: FC<GitLabPushModalProps> = ({ onClose }) => {
     >
       <Modal
         onOpenChange={isOpen => !isOpen && onClose()}
-        className="max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-md border border-solid border-(--hl-sm) bg-(--color-bg) p-(--padding-lg) text-(--color-font)"
+        className="max-h-[85vh] w-full max-w-4xl overflow-y-auto rounded-md border border-solid border-(--hl-sm) bg-(--color-bg) p-(--padding-lg) text-(--color-font)"
       >
         <Dialog className="outline-hidden">
           {({ close }) => (
@@ -200,16 +223,61 @@ export const GitLabPushModal: FC<GitLabPushModalProps> = ({ onClose }) => {
                     <span>Файл: <strong className="text-(--color-font)">{config?.configFileName || 'insomnia-sync.yaml'}</strong></span>
                   </div>
 
-                  {/* Tree */}
-                  <div>
-                    <Label className="mb-1 block text-xs font-medium text-(--hl)">
-                      Выберите что отправить
-                    </Label>
-                    <TreeSelector
-                      data={tree}
-                      selectedIds={selectedIds}
-                      onSelectionChange={setSelectedIds}
-                    />
+                  {/* Двухпанельный лейаут */}
+                  <div className="flex gap-4">
+                    {/* Запросы */}
+                    <div className="flex flex-1 flex-col gap-2 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="push-requests"
+                          checked={pushRequests}
+                          onChange={e => setPushRequests(e.target.checked)}
+                          className="h-4 w-4 rounded-xs border-(--hl-md) bg-(--color-bg) text-(--color-surprise) focus:ring-(--color-surprise)"
+                        />
+                        <Label htmlFor="push-requests" className="block text-xs font-bold text-(--hl) uppercase cursor-pointer select-none">
+                          📋 Запросы
+                        </Label>
+                      </div>
+                      
+                      <div className={pushRequests ? '' : 'opacity-50 pointer-events-none'}>
+                        <TreeSelector
+                          data={tree}
+                          selectedIds={selectedIds}
+                          onSelectionChange={setSelectedIds}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Окружения */}
+                    <div className="flex flex-1 flex-col gap-2 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="push-envs"
+                          checked={pushEnvironments}
+                          onChange={e => setPushEnvironments(e.target.checked)}
+                          className="h-4 w-4 rounded-xs border-(--hl-md) bg-(--color-bg) text-(--color-surprise) focus:ring-(--color-surprise)"
+                        />
+                        <Label htmlFor="push-envs" className="block text-xs font-bold text-(--hl) uppercase cursor-pointer select-none">
+                          🔧 Переменные окружения
+                        </Label>
+                      </div>
+
+                      <div className={pushEnvironments ? '' : 'opacity-50 pointer-events-none'}>
+                        {envTree.length > 0 ? (
+                          <TreeSelector
+                            data={envTree}
+                            selectedIds={selectedEnvIds}
+                            onSelectionChange={setSelectedEnvIds}
+                          />
+                        ) : (
+                          <div className="rounded-md border border-dashed border-(--hl-md) px-4 py-8 text-center text-sm text-(--hl)">
+                            Нет окружений в workspace
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Commit message */}
@@ -250,7 +318,7 @@ export const GitLabPushModal: FC<GitLabPushModalProps> = ({ onClose }) => {
                 <Button
                   className="flex items-center gap-1 rounded-xs bg-(--color-surprise) px-4 py-1.5 text-sm font-medium text-(--color-font-surprise) transition-colors hover:opacity-90 disabled:opacity-50"
                   onPress={handlePush}
-                  isDisabled={pushing || loading || selectedIds.size === 0 || !!error && !rawV5Data}
+                  isDisabled={pushing || loading || (!(pushRequests && selectedIds.size > 0) && !(pushEnvironments && selectedEnvIds.size > 0)) || !!error && !rawV5Data}
                 >
                   {pushing && <Icon icon="spinner" className="animate-spin" />}
                   📤 Push
