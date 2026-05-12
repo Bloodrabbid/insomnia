@@ -3,7 +3,7 @@
 Эта версия Insomnia содержит уникальные доработки, которых нет в официальном релизе.
 
 ## Основные изменения
-1. **GitLab Sync (Bundled)**: Плагин синхронизации встроен в ядро. Названия файлов изменены на `insomnia-sync.yaml` для совместимости.
+1. **GitLab Sync (Bundled)**: Плагин синхронизации встроен в ядро. Поддерживает гранулярную загрузку (Pull) с разделением на дерево запросов и дерево переменных окружения. Позволяет выбирать режим импорта (Объединение/Перезапись) отдельно для каждой категории.
 2. **Advanced JSON Filtering**: Система поиска и многоуровневой фильтрации JSON-ответов с использованием "чипов" (тегов).
 3. **Smart Block Selection**: Автоматический выбор родительских объектов/массивов при клике на результат поиска.
 4. **Bypass Node 24**: Скрипты сборки адаптированы для работы на Node.js v22.
@@ -63,8 +63,14 @@
 - **Стили (CSS)**: `packages/insomnia/src/ui/css/main.css`
   *(Ищите секцию `JSON Filter Chips` в конце файла для изменения дизайна тегов и кнопок)*
 
-- **Плагин GitLab**: `packages/insomnia/src/plugins/insomnia-plugin-universal-git/src/index.tsx`
-  *(Здесь настроены дефолтные имена файлов синхронизации)*
+- **Интерфейс GitLab Pull**: `packages/insomnia/src/ui/components/modals/gitlab-sync/gitlab-pull-modal.tsx`
+  *(Логика гранулярного импорта, раздельные режимы Merge/Overwrite и фильтрация ресурсов)*
+
+- **Утилиты GitLab Sync**: `packages/insomnia/src/ui/services/gitlab-sync-utils.ts`
+  *(Парсинг YAML в дерево, сопоставление ID по именам и логика фильтрации)*
+
+- **Плагин GitLab (Core)**: `packages/insomnia/src/plugins/insomnia-plugin-universal-git/src/index.tsx`
+  *(Базовые настройки и названия файлов синхронизации)*
 
 - **Управление вкладками**: `packages/insomnia/src/ui/components/tabs/tab-list.tsx`
   *(Логика группировки, горизонтальной прокрутки и "магнитного" позиционирования)*

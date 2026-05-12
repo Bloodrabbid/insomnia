@@ -152,6 +152,33 @@ export async function matchAndReplaceIds(
 }
 
 /**
+ * Сопоставляет окружения по имени с существующими в базе данных.
+ */
+export async function matchAndReplaceEnvIds(
+  environments: any[],
+  existingResources: any[],
+  workspaceId: string
+) {
+  for (const env of environments) {
+    const envName = (env.name || '').trim().toLowerCase();
+    const match = existingResources.find(r => 
+      r.type === models.environment.type && 
+      (r.name || '').trim().toLowerCase() === envName &&
+      r.parentId === workspaceId
+    );
+
+    if (match) {
+      console.log(`GitLab Sync: Matched Environment "${env.name}" -> existing ID ${match._id}`);
+      if (env.meta) {
+        env.meta.id = match._id;
+      } else {
+        env.meta = { id: match._id };
+      }
+    }
+  }
+}
+
+/**
  * Парсит окружения из V5 collection в дерево.
  * Каждое окружение становится «папкой», каждая переменная — листом.
  */

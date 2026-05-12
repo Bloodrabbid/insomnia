@@ -24,7 +24,7 @@ import { Icon } from '~/ui/components/icon';
 import { TreeSelector } from '~/ui/components/gitlab-sync/tree-selector';
 import { type GitLabSyncConfig, loadGitLabConfig } from '~/ui/services/gitlab-sync-config';
 import { GitLabSyncService } from '~/ui/services/gitlab-sync';
-import { type TreeNode, collectAllIds, filterV5Collection, filterV5EnvironmentsBySelection, parseCollectionToTree, parseEnvironmentsToTree, matchAndReplaceIds } from '~/ui/services/gitlab-sync-utils';
+import { type TreeNode, collectAllIds, filterV5Collection, filterV5EnvironmentsBySelection, parseCollectionToTree, parseEnvironmentsToTree, matchAndReplaceIds, matchAndReplaceEnvIds } from '~/ui/services/gitlab-sync-utils';
 
 interface GitLabPullModalProps {
   onClose: () => void;
@@ -44,7 +44,10 @@ export const GitLabPullModal: FC<GitLabPullModalProps> = ({ onClose }) => {
   const [envTree, setEnvTree] = useState<TreeNode[]>([]);
   const [selectedEnvIds, setSelectedEnvIds] = useState<Set<string>>(new Set());
 
-  const [importMode, setImportMode] = useState<'overwrite' | 'merge'>('merge');
+  const [importRequests, setImportRequests] = useState(true);
+  const [importEnvironments, setImportEnvironments] = useState(true);
+  const [requestImportMode, setRequestImportMode] = useState<'overwrite' | 'merge'>('merge');
+  const [envImportMode, setEnvImportMode] = useState<'overwrite' | 'merge'>('merge');
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(false);
   const [pulling, setPulling] = useState(false);
@@ -63,7 +66,8 @@ export const GitLabPullModal: FC<GitLabPullModalProps> = ({ onClose }) => {
         }
         setConfig(cfg);
         setSelectedBranch(cfg.branch);
-        setImportMode(cfg.clearBeforeImport ? 'overwrite' : 'merge');
+        setRequestImportMode(cfg.clearBeforeImport ? 'overwrite' : 'merge');
+        setEnvImportMode(cfg.clearBeforeImport ? 'overwrite' : 'merge');
 
         const service = new GitLabSyncService(cfg);
         const branchList = await service.fetchBranches().catch(() => [cfg.branch]);
@@ -134,31 +138,75 @@ export const GitLabPullModal: FC<GitLabPullModalProps> = ({ onClose }) => {
     setSuccess('');
 
     try {
-      // Фильтруем коллекцию по выбранным элементам
-      let dataToImport = parsedV5;
-      const allIds = collectAllIds(tree);
+      let dataToImport = { ...parsedV5 };
 
-      if (selectedIds.size < allIds.size) {
-        const filteredCollection = filterV5Collection(parsedV5.collection || [], selectedIds);
-        dataToImport = { ...parsedV5, collection: filteredCollection };
+      // 1. Обработка запросов
+      if (!importRequests) {
+        dataToImport.collection = [];
+      } else {
+        const allIds = collectAllIds(tree);
+        if (selectedIds.size < allIds.size) {
+          dataToImport.collection = filterV5Collection(parsedV5.collection || [], selectedIds);
+        }
       }
 
-      // Фильтруем окружения по выбранным переменным
-      const allEnvIds = collectAllIds(envTree);
-      if (selectedEnvIds.size === 0) {
-        // Ничего не выбрано — убираем все окружения
-        dataToImport = { ...dataToImport, environments: undefined };
-      } else if (selectedEnvIds.size < allEnvIds.size) {
-        // Частичный выбор — фильтруем переменные
-        dataToImport = filterV5EnvironmentsBySelection(dataToImport, selectedEnvIds);
+      // 2. Обработка окружений
+      if (!importEnvironments) {
+        dataToImport.environments = undefined;
+      } else {
+        const allEnvIds = collectAllIds(envTree);
+        if (selectedEnvIds.size === 0) {
+          dataToImport.environments = undefined;
+        } else if (selectedEnvIds.size < allEnvIds.size) {
+          dataToImport = filterV5EnvironmentsBySelection(dataToImport, selectedEnvIds);
+        }
       }
 
-      // Пробуем сопоставить ID по именам, чтобы не плодить дубликаты папок и окружений
-      if (importMode === 'merge') {
-        const workspace = await services.workspace.getById(workspaceId);
-        if (workspace) {
-          const existingResources = await db.getWithDescendants(workspace);
+      // 3. Сопоставление ID при слиянии
+      const workspace = await services.workspace.getById(workspaceId);
+      if (workspace) {
+        const existingResources = await db.getWithDescendants(workspace);
+        
+        if (importRequests && requestImportMode === 'merge') {
           await matchAndReplaceIds(dataToImport.collection || [], existingResources, workspaceId);
+        }
+        
+        if (importEnvironments && envImportMode === 'merge' && dataToImport.environments?.subEnvironments) {
+          await matchAndReplaceEnvIds(dataToImport.environments.subEnvironments, existingResources, workspaceId);
+        }
+      }
+
+      // 4. Режим перезаписи (очистка перед импортом)
+      if (workspace && ((importRequests && requestImportMode === 'overwrite') || (importEnvironments && envImportMode === 'overwrite'))) {
+        const descendants = await db.getWithDescendants(workspace);
+        const toRemove: any[] = [];
+
+        if (importRequests && requestImportMode === 'overwrite') {
+          const requestTypes = [
+            models.request.type,
+            models.requestGroup.type,
+            models.grpcRequest.type,
+            models.webSocketRequest.type,
+            models.socketIORequest.type,
+            models.requestMeta.type,
+            models.requestGroupMeta.type,
+            models.grpcRequestMeta.type,
+          ];
+          toRemove.push(...descendants.filter(d => requestTypes.includes(d.type)));
+        }
+
+        if (importEnvironments && envImportMode === 'overwrite') {
+          // Удаляем только sub-environments, чтобы не трогать базу? 
+          // Или всё кроме workspaceId и того что не относится к env.
+          toRemove.push(...descendants.filter(d => d.type === models.environment.type));
+        }
+
+        if (toRemove.length > 0) {
+          const bufferId = await db.bufferChanges();
+          for (const doc of toRemove) {
+            await db.remove(doc);
+          }
+          await db.flushChanges(bufferId);
         }
       }
 
@@ -170,20 +218,6 @@ export const GitLabPullModal: FC<GitLabPullModalProps> = ({ onClose }) => {
         noRefs: true,
         quotingType: '"',
       });
-
-      // Режим перезаписи
-      if (importMode === 'overwrite') {
-        const workspace = await services.workspace.getById(workspaceId);
-        if (workspace) {
-          const descendants = await db.getWithDescendants(workspace);
-          const toRemove = descendants.filter(d => d._id !== workspaceId);
-          const bufferId = await db.bufferChanges();
-          for (const doc of toRemove) {
-            await db.remove(doc);
-          }
-          await db.flushChanges(bufferId);
-        }
-      }
 
       // Импортируем напрямую в БД через upsert, чтобы сохранить сопоставленные ID
       const scanResult = await scanResources([{ contentStr: content }]);
@@ -226,7 +260,7 @@ export const GitLabPullModal: FC<GitLabPullModalProps> = ({ onClose }) => {
     } finally {
       setPulling(false);
     }
-  }, [parsedV5, config, selectedIds, tree, selectedEnvIds, envTree, importMode, workspaceId]);
+  }, [parsedV5, config, importRequests, importEnvironments, selectedIds, tree, selectedEnvIds, envTree, requestImportMode, envImportMode, workspaceId]);
 
   return (
     <ModalOverlay
@@ -302,60 +336,104 @@ export const GitLabPullModal: FC<GitLabPullModalProps> = ({ onClose }) => {
                     <>
                       <div className="flex gap-4">
                         {/* Левая панель — Запросы */}
-                        <div className="flex-1 min-w-0">
-                          <Label className="mb-1 block text-xs font-bold text-(--hl) uppercase">
-                            📋 Запросы
-                          </Label>
-                          <TreeSelector
-                            data={tree}
-                            selectedIds={selectedIds}
-                            onSelectionChange={setSelectedIds}
-                          />
+                        <div className="flex flex-1 flex-col gap-2 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id="import-requests"
+                              checked={importRequests}
+                              onChange={e => setImportRequests(e.target.checked)}
+                              className="h-4 w-4 rounded-xs border-(--hl-md) bg-(--color-bg) text-(--color-surprise) focus:ring-(--color-surprise)"
+                            />
+                            <Label htmlFor="import-requests" className="block text-xs font-bold text-(--hl) uppercase cursor-pointer select-none">
+                              📋 Запросы
+                            </Label>
+                          </div>
+                          
+                          <div className={clsx('flex flex-col gap-2 transition-opacity', !importRequests && 'opacity-50 pointer-events-none')}>
+                            <TreeSelector
+                              data={tree}
+                              selectedIds={selectedIds}
+                              onSelectionChange={setSelectedIds}
+                            />
+                            
+                            <RadioGroup
+                              value={requestImportMode}
+                              onChange={v => setRequestImportMode(v as 'overwrite' | 'merge')}
+                              className="flex flex-col gap-1"
+                            >
+                              <Label className="text-[10px] font-medium text-(--hl) uppercase">Режим</Label>
+                              <div className="flex gap-1">
+                                <Radio
+                                  value="merge"
+                                  className="flex-1 cursor-pointer rounded-xs border border-solid border-(--hl-md) px-2 py-1 text-center transition-colors hover:bg-(--hl-xs) data-selected:border-(--color-surprise) data-selected:bg-(--hl-xs)"
+                                >
+                                  <div className="text-xs font-medium">Объединить</div>
+                                </Radio>
+                                <Radio
+                                  value="overwrite"
+                                  className="flex-1 cursor-pointer rounded-xs border border-solid border-(--hl-md) px-2 py-1 text-center transition-colors hover:bg-(--hl-xs) data-selected:border-(--color-danger) data-selected:bg-[rgba(var(--color-danger-rgb),0.1)]"
+                                >
+                                  <div className="text-xs font-medium">Перезаписать</div>
+                                </Radio>
+                              </div>
+                            </RadioGroup>
+                          </div>
                         </div>
 
                         {/* Правая панель — Окружения */}
-                        <div className="flex-1 min-w-0">
-                          <Label className="mb-1 block text-xs font-bold text-(--hl) uppercase">
-                            🔧 Переменные окружения
-                          </Label>
-                          {envTree.length > 0 ? (
-                            <TreeSelector
-                              data={envTree}
-                              selectedIds={selectedEnvIds}
-                              onSelectionChange={setSelectedEnvIds}
+                        <div className="flex flex-1 flex-col gap-2 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id="import-envs"
+                              checked={importEnvironments}
+                              onChange={e => setImportEnvironments(e.target.checked)}
+                              className="h-4 w-4 rounded-xs border-(--hl-md) bg-(--color-bg) text-(--color-surprise) focus:ring-(--color-surprise)"
                             />
-                          ) : (
-                            <div className="rounded-md border border-dashed border-(--hl-md) px-4 py-8 text-center text-sm text-(--hl)">
-                              Нет окружений в файле
-                            </div>
-                          )}
+                            <Label htmlFor="import-envs" className="block text-xs font-bold text-(--hl) uppercase cursor-pointer select-none">
+                              🔧 Переменные окружения
+                            </Label>
+                          </div>
+
+                          <div className={clsx('flex flex-col gap-2 transition-opacity', !importEnvironments && 'opacity-50 pointer-events-none')}>
+                            {envTree.length > 0 ? (
+                              <>
+                                <TreeSelector
+                                  data={envTree}
+                                  selectedIds={selectedEnvIds}
+                                  onSelectionChange={setSelectedEnvIds}
+                                />
+                                <RadioGroup
+                                  value={envImportMode}
+                                  onChange={v => setEnvImportMode(v as 'overwrite' | 'merge')}
+                                  className="flex flex-col gap-1"
+                                >
+                                  <Label className="text-[10px] font-medium text-(--hl) uppercase">Режим</Label>
+                                  <div className="flex gap-1">
+                                    <Radio
+                                      value="merge"
+                                      className="flex-1 cursor-pointer rounded-xs border border-solid border-(--hl-md) px-2 py-1 text-center transition-colors hover:bg-(--hl-xs) data-selected:border-(--color-surprise) data-selected:bg-(--hl-xs)"
+                                    >
+                                      <div className="text-xs font-medium">Объединить</div>
+                                    </Radio>
+                                    <Radio
+                                      value="overwrite"
+                                      className="flex-1 cursor-pointer rounded-xs border border-solid border-(--hl-md) px-2 py-1 text-center transition-colors hover:bg-(--hl-xs) data-selected:border-(--color-danger) data-selected:bg-[rgba(var(--color-danger-rgb),0.1)]"
+                                    >
+                                      <div className="text-xs font-medium">Перезаписать</div>
+                                    </Radio>
+                                  </div>
+                                </RadioGroup>
+                              </>
+                            ) : (
+                              <div className="rounded-md border border-dashed border-(--hl-md) px-4 py-8 text-center text-sm text-(--hl)">
+                                Нет окружений в файле
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-
-                      {/* Import mode */}
-                      <RadioGroup
-                        value={importMode}
-                        onChange={v => setImportMode(v as 'overwrite' | 'merge')}
-                        className="flex flex-col gap-2"
-                      >
-                        <Label className="text-xs font-medium text-(--hl)">Режим импорта</Label>
-                        <div className="flex gap-2">
-                          <Radio
-                            value="overwrite"
-                            className="flex-1 cursor-pointer rounded-xs border border-solid border-(--hl-md) p-3 transition-colors hover:bg-(--hl-xs) data-selected:border-(--color-surprise) data-selected:ring-1 data-selected:ring-(--color-surprise)"
-                          >
-                            <div className="text-sm font-medium">Перезаписать всё</div>
-                            <div className="mt-0.5 text-xs text-(--hl)">Очистить workspace и импортировать</div>
-                          </Radio>
-                          <Radio
-                            value="merge"
-                            className="flex-1 cursor-pointer rounded-xs border border-solid border-(--hl-md) p-3 transition-colors hover:bg-(--hl-xs) data-selected:border-(--color-surprise) data-selected:ring-1 data-selected:ring-(--color-surprise)"
-                          >
-                            <div className="text-sm font-medium">Объединить</div>
-                            <div className="mt-0.5 text-xs text-(--hl)">Добавить к существующему</div>
-                          </Radio>
-                        </div>
-                      </RadioGroup>
                     </>
                   )}
 
@@ -390,7 +468,7 @@ export const GitLabPullModal: FC<GitLabPullModalProps> = ({ onClose }) => {
                 <Button
                   className="flex items-center gap-1 rounded-xs bg-(--color-success) px-4 py-1.5 text-sm font-medium text-(--color-font-success) transition-colors hover:opacity-90 disabled:opacity-50"
                   onPress={handlePull}
-                  isDisabled={pulling || !parsedV5 || selectedIds.size === 0}
+                  isDisabled={pulling || !parsedV5 || (!(importRequests && selectedIds.size > 0) && !(importEnvironments && selectedEnvIds.size > 0))}
                 >
                   {pulling && <Icon icon="spinner" className="animate-spin" />}
                   📥 Pull
