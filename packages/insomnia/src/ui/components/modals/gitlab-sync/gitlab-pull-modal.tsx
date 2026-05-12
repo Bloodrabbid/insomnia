@@ -13,6 +13,7 @@ import {
   ModalOverlay,
   Radio,
   RadioGroup,
+  Input,
 } from 'react-aria-components';
 import { useParams } from 'react-router';
 
@@ -24,7 +25,7 @@ import { Icon } from '~/ui/components/icon';
 import { TreeSelector } from '~/ui/components/gitlab-sync/tree-selector';
 import { type GitLabSyncConfig, loadGitLabConfig } from '~/ui/services/gitlab-sync-config';
 import { GitLabSyncService } from '~/ui/services/gitlab-sync';
-import { type TreeNode, collectAllIds, filterV5Collection, filterV5EnvironmentsBySelection, parseCollectionToTree, parseEnvironmentsToTree, matchAndReplaceIds, matchAndReplaceEnvIds } from '~/ui/services/gitlab-sync-utils';
+import { type TreeNode, collectAllIds, filterV5Collection, filterV5EnvironmentsBySelection, parseCollectionToTree, parseEnvironmentsToTree, matchAndReplaceIds, matchAndReplaceEnvIds, filterTreeByName } from '~/ui/services/gitlab-sync-utils';
 
 interface GitLabPullModalProps {
   onClose: () => void;
@@ -51,6 +52,8 @@ export const GitLabPullModal: FC<GitLabPullModalProps> = ({ onClose }) => {
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(false);
   const [pulling, setPulling] = useState(false);
+  const [requestSearch, setRequestSearch] = useState('');
+  const [envSearch, setEnvSearch] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -351,8 +354,18 @@ export const GitLabPullModal: FC<GitLabPullModalProps> = ({ onClose }) => {
                           </div>
                           
                           <div className={clsx('flex flex-col gap-2 transition-opacity', !importRequests && 'opacity-50 pointer-events-none')}>
+                            <div className="relative">
+                              <Input
+                                placeholder="Поиск запросов..."
+                                value={requestSearch}
+                                onChange={e => setRequestSearch(e.target.value)}
+                                className="w-full rounded-xs border border-solid border-(--hl-sm) bg-(--color-bg) pl-8 pr-3 py-1 text-xs text-(--color-font) outline-hidden focus:ring-1 focus:ring-(--hl-md)"
+                              />
+                              <Icon icon="search" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-(--hl)" />
+                            </div>
+
                             <TreeSelector
-                              data={tree}
+                              data={filterTreeByName(tree, requestSearch)}
                               selectedIds={selectedIds}
                               onSelectionChange={setSelectedIds}
                             />
@@ -399,8 +412,18 @@ export const GitLabPullModal: FC<GitLabPullModalProps> = ({ onClose }) => {
                           <div className={clsx('flex flex-col gap-2 transition-opacity', !importEnvironments && 'opacity-50 pointer-events-none')}>
                             {envTree.length > 0 ? (
                               <>
+                                <div className="relative">
+                                  <Input
+                                    placeholder="Поиск переменных..."
+                                    value={envSearch}
+                                    onChange={e => setEnvSearch(e.target.value)}
+                                    className="w-full rounded-xs border border-solid border-(--hl-sm) bg-(--color-bg) pl-8 pr-3 py-1 text-xs text-(--color-font) outline-hidden focus:ring-1 focus:ring-(--hl-md)"
+                                  />
+                                  <Icon icon="search" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-(--hl)" />
+                                </div>
+
                                 <TreeSelector
-                                  data={envTree}
+                                  data={filterTreeByName(envTree, envSearch)}
                                   selectedIds={selectedEnvIds}
                                   onSelectionChange={setSelectedEnvIds}
                                 />

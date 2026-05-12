@@ -3,6 +3,7 @@
  */
 import yaml from 'js-yaml';
 import { type FC, useCallback, useEffect, useState } from 'react';
+import clsx from 'clsx';
 import {
   Button,
   Dialog,
@@ -20,7 +21,7 @@ import { Icon } from '~/ui/components/icon';
 import { TreeSelector } from '~/ui/components/gitlab-sync/tree-selector';
 import { type GitLabSyncConfig, loadGitLabConfig } from '~/ui/services/gitlab-sync-config';
 import { GitLabSyncService } from '~/ui/services/gitlab-sync';
-import { type TreeNode, collectAllIds, filterV5Collection, filterV5EnvironmentsBySelection, parseCollectionToTree, parseEnvironmentsToTree } from '~/ui/services/gitlab-sync-utils';
+import { type TreeNode, collectAllIds, filterV5Collection, filterV5EnvironmentsBySelection, parseCollectionToTree, parseEnvironmentsToTree, filterTreeByName } from '~/ui/services/gitlab-sync-utils';
 
 interface GitLabPushModalProps {
   onClose: () => void;
@@ -44,6 +45,8 @@ export const GitLabPushModal: FC<GitLabPushModalProps> = ({ onClose }) => {
   const [pushRequests, setPushRequests] = useState(true);
   const [pushEnvironments, setPushEnvironments] = useState(true);
   const [commitMessage, setCommitMessage] = useState('Update workspace');
+  const [requestSearch, setRequestSearch] = useState('');
+  const [envSearch, setEnvSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [pushing, setPushing] = useState(false);
   const [error, setError] = useState('');
@@ -240,9 +243,19 @@ export const GitLabPushModal: FC<GitLabPushModalProps> = ({ onClose }) => {
                         </Label>
                       </div>
                       
-                      <div className={pushRequests ? '' : 'opacity-50 pointer-events-none'}>
+                      <div className={clsx('flex flex-col gap-2 transition-opacity', !pushRequests && 'opacity-50 pointer-events-none')}>
+                        <div className="relative">
+                          <Input
+                            placeholder="Поиск запросов..."
+                            value={requestSearch}
+                            onChange={e => setRequestSearch((e.target as HTMLInputElement).value)}
+                            className="w-full rounded-xs border border-solid border-(--hl-sm) bg-(--color-bg) pl-8 pr-3 py-1 text-xs text-(--color-font) outline-hidden focus:ring-1 focus:ring-(--hl-md)"
+                          />
+                          <Icon icon="search" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-(--hl)" />
+                        </div>
+
                         <TreeSelector
-                          data={tree}
+                          data={filterTreeByName(tree, requestSearch)}
                           selectedIds={selectedIds}
                           onSelectionChange={setSelectedIds}
                         />
@@ -264,13 +277,25 @@ export const GitLabPushModal: FC<GitLabPushModalProps> = ({ onClose }) => {
                         </Label>
                       </div>
 
-                      <div className={pushEnvironments ? '' : 'opacity-50 pointer-events-none'}>
+                      <div className={clsx('flex flex-col gap-2 transition-opacity', !pushEnvironments && 'opacity-50 pointer-events-none')}>
                         {envTree.length > 0 ? (
-                          <TreeSelector
-                            data={envTree}
-                            selectedIds={selectedEnvIds}
-                            onSelectionChange={setSelectedEnvIds}
-                          />
+                          <>
+                            <div className="relative">
+                              <Input
+                                placeholder="Поиск переменных..."
+                                value={envSearch}
+                                onChange={e => setEnvSearch((e.target as HTMLInputElement).value)}
+                                className="w-full rounded-xs border border-solid border-(--hl-sm) bg-(--color-bg) pl-8 pr-3 py-1 text-xs text-(--color-font) outline-hidden focus:ring-1 focus:ring-(--hl-md)"
+                              />
+                              <Icon icon="search" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-(--hl)" />
+                            </div>
+
+                            <TreeSelector
+                              data={filterTreeByName(envTree, envSearch)}
+                              selectedIds={selectedEnvIds}
+                              onSelectionChange={setSelectedEnvIds}
+                            />
+                          </>
                         ) : (
                           <div className="rounded-md border border-dashed border-(--hl-md) px-4 py-8 text-center text-sm text-(--hl)">
                             Нет окружений в workspace

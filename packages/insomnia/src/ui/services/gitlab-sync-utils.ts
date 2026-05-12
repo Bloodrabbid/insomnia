@@ -286,3 +286,29 @@ export function countRequests(node: TreeNode): number {
   }
   return node.children.reduce((sum, child) => sum + countRequests(child), 0);
 }
+
+/**
+ * Рекурсивно фильтрует дерево по поисковой строке.
+ * Сохраняет папку, если ее имя совпадает ИЛИ если совпадает имя любого из потомков.
+ */
+export function filterTreeByName(nodes: TreeNode[], search: string): TreeNode[] {
+  if (!search) return nodes;
+  const normalizedSearch = search.toLowerCase();
+
+  return nodes
+    .map(node => {
+      const matchesItself = node.name.toLowerCase().includes(normalizedSearch);
+      
+      if (node.children) {
+        const filteredChildren = filterTreeByName(node.children, search);
+        if (filteredChildren.length > 0 || matchesItself) {
+          return { ...node, children: filteredChildren };
+        }
+      } else if (matchesItself) {
+        return node;
+      }
+      
+      return null;
+    })
+    .filter((n): n is TreeNode => n !== null);
+}
