@@ -92,7 +92,7 @@ const TreeItem: FC<{
           </div>
         </Checkbox>
 
-        {/* Иконка папки / метод */}
+        {/* Иконка папки / метод / окружение */}
         {isFolder ? (
           <button
             className="flex items-center gap-1 bg-transparent text-(--color-font) outline-hidden"
@@ -100,6 +100,14 @@ const TreeItem: FC<{
           >
             <Icon icon={collapsed ? 'folder' : 'folder-open'} className="w-4 shrink-0 text-(--hl)" />
           </button>
+        ) : node.type === 'env' ? (
+          <div className="flex w-8 shrink-0 items-center justify-center rounded-xs border border-solid border-(--hl-sm) bg-(--hl-xs) text-(--hl)">
+            <Icon icon="code" className="text-[10px]" />
+          </div>
+        ) : node.type === 'env-var' ? (
+          <span className="flex w-8 shrink-0 items-center justify-center rounded-xs text-[0.6rem] bg-[rgba(var(--color-info-rgb),0.3)] text-(--color-font-info)">
+            VAR
+          </span>
         ) : (
           <span
             className={`flex w-8 shrink-0 items-center justify-center rounded-xs border border-solid border-(--hl-sm) text-[0.6rem] ${

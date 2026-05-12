@@ -8,7 +8,7 @@ import * as models from '~/models';
 export interface TreeNode {
   id: string;
   name: string;
-  type: 'folder' | 'request' | 'grpc' | 'websocket' | 'socketio';
+  type: 'folder' | 'request' | 'grpc' | 'websocket' | 'socketio' | 'env' | 'env-var';
   method?: string;
   children?: TreeNode[];
 }
@@ -34,6 +34,14 @@ export function parseCollectionToTree(collection: any[]): TreeNode[] {
         name: item.name || 'Unnamed Folder',
         type: 'folder' as const,
         children: parseCollectionToTree(item.children),
+      };
+    }
+
+    if (item._type === 'environment') {
+      return {
+        id,
+        name: item.name || 'Environment',
+        type: 'env' as const,
       };
     }
 
@@ -113,10 +121,13 @@ export async function matchAndReplaceIds(
 ) {
   for (const item of collection) {
     const isFolder = !!item.children;
-    const type = isFolder ? models.requestGroup.type : models.request.type;
+    // Ищем существующий элемент
+    let type = isFolder ? models.requestGroup.type : models.request.type;
+    if (item._type === 'environment') type = models.environment.type;
+    if (item._type === 'cookie_jar') type = models.cookieJar.type;
+
     const itemName = (item.name || '').trim().toLowerCase();
     
-    // Ищем существующий элемент
     const match = existingResources.find(r => 
       (r.name || '').trim().toLowerCase() === itemName && 
       r.type === type && 
@@ -124,14 +135,12 @@ export async function matchAndReplaceIds(
     );
 
     if (match) {
-      console.log(`GitLab Sync: Matched "${item.name}" -> existing ID ${match._id}`);
+      console.log(`GitLab Sync: Matched "${item.name || item._type}" -> existing ID ${match._id}`);
       if (item.meta) {
         item.meta.id = match._id;
       } else {
         item.meta = { id: match._id };
       }
-    } else {
-      console.log(`GitLab Sync: No match for "${item.name}" (type: ${type}) under parent ${parentId}`);
     }
 
     // Рекурсия
@@ -140,6 +149,78 @@ export async function matchAndReplaceIds(
       await matchAndReplaceIds(item.children, existingResources, currentId);
     }
   }
+}
+
+/**
+ * Парсит окружения из V5 collection в дерево.
+ * Каждое окружение становится «папкой», каждая переменная — листом.
+ */
+export function parseEnvironmentsToTree(parsedV5: any): TreeNode[] {
+  const envSection = parsedV5?.environments;
+  if (!envSection) return [];
+
+  const subEnvs = envSection.subEnvironments || [];
+  if (subEnvs.length === 0) return [];
+
+  return subEnvs.map((env: any) => {
+    const envId = env.meta?.id || `env_${Math.random().toString(36).slice(2)}`;
+    const data = env.data || {};
+
+    const varNodes: TreeNode[] = Object.entries(data).map(([key, value]) => ({
+      id: `${envId}__${key}`,
+      name: `${key} = ${String(value ?? '').slice(0, 60)}`,
+      type: 'env-var' as const,
+    }));
+
+    return {
+      id: envId,
+      name: env.name || 'Environment',
+      type: 'folder' as const,
+      children: varNodes,
+    };
+  });
+}
+
+/**
+ * Фильтрует окружения V5 по выбранным ID переменных.
+ * Если окружение не выбрано вообще — исключается.
+ * Если выбрано частично — оставляем только выбранные ключи в data/kvPairData.
+ */
+export function filterV5EnvironmentsBySelection(parsedV5: any, selectedEnvIds: Set<string>): any {
+  const envSection = parsedV5?.environments;
+  if (!envSection?.subEnvironments) return parsedV5;
+
+  const filteredSubEnvs = envSection.subEnvironments
+    .map((env: any) => {
+      const envId = env.meta?.id || '';
+
+      // Проверяем, выбрано ли окружение или хотя бы одна его переменная
+      if (!selectedEnvIds.has(envId)) {
+        const hasAnyVar = [...selectedEnvIds].some(id => id.startsWith(`${envId}__`));
+        if (!hasAnyVar) return null;
+      }
+
+      // Фильтруем data по выбранным переменным
+      const filteredData: Record<string, any> = {};
+      if (env.data) {
+        for (const [key, value] of Object.entries(env.data)) {
+          if (selectedEnvIds.has(`${envId}__${key}`)) {
+            filteredData[key] = value;
+          }
+        }
+      }
+
+      return { ...env, data: filteredData };
+    })
+    .filter(Boolean);
+
+  return {
+    ...parsedV5,
+    environments: {
+      ...envSection,
+      subEnvironments: filteredSubEnvs,
+    },
+  };
 }
 
 /**
@@ -163,7 +244,7 @@ export function filterV5Collection(collection: any[], selectedIds: Set<string>):
         return null;
       }
 
-      // Это запрос — оставляем только если выбран
+      // Это запрос или окружение — оставляем только если выбран
       return selectedIds.has(id) ? item : null;
     })
     .filter(Boolean);

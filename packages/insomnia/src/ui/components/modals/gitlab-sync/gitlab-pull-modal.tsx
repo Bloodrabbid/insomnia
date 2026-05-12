@@ -3,6 +3,7 @@
  */
 import yaml from 'js-yaml';
 import { type FC, useCallback, useEffect, useState } from 'react';
+import clsx from 'clsx';
 import {
   Button,
   Dialog,
@@ -23,7 +24,7 @@ import { Icon } from '~/ui/components/icon';
 import { TreeSelector } from '~/ui/components/gitlab-sync/tree-selector';
 import { type GitLabSyncConfig, loadGitLabConfig } from '~/ui/services/gitlab-sync-config';
 import { GitLabSyncService } from '~/ui/services/gitlab-sync';
-import { type TreeNode, collectAllIds, filterV5Collection, parseCollectionToTree, matchAndReplaceIds } from '~/ui/services/gitlab-sync-utils';
+import { type TreeNode, collectAllIds, filterV5Collection, filterV5EnvironmentsBySelection, parseCollectionToTree, parseEnvironmentsToTree, matchAndReplaceIds } from '~/ui/services/gitlab-sync-utils';
 
 interface GitLabPullModalProps {
   onClose: () => void;
@@ -40,8 +41,10 @@ export const GitLabPullModal: FC<GitLabPullModalProps> = ({ onClose }) => {
   const [parsedV5, setParsedV5] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  const [importMode, setImportMode] = useState<'overwrite' | 'merge'>('merge');
+  const [envTree, setEnvTree] = useState<TreeNode[]>([]);
+  const [selectedEnvIds, setSelectedEnvIds] = useState<Set<string>>(new Set());
 
+  const [importMode, setImportMode] = useState<'overwrite' | 'merge'>('merge');
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(false);
   const [pulling, setPulling] = useState(false);
@@ -80,6 +83,8 @@ export const GitLabPullModal: FC<GitLabPullModalProps> = ({ onClose }) => {
     setError('');
     setTree([]);
     setSelectedIds(new Set());
+    setEnvTree([]);
+    setSelectedEnvIds(new Set());
     setParsedV5(null);
 
     try {
@@ -106,6 +111,11 @@ export const GitLabPullModal: FC<GitLabPullModalProps> = ({ onClose }) => {
         const treeData = parseCollectionToTree(parsed.collection);
         setTree(treeData);
         setSelectedIds(collectAllIds(treeData));
+
+        // Парсим окружения в отдельное дерево
+        const envTreeData = parseEnvironmentsToTree(parsed);
+        setEnvTree(envTreeData);
+        setSelectedEnvIds(collectAllIds(envTreeData));
       } else {
         setError('Файл не содержит collection.');
       }
@@ -133,7 +143,17 @@ export const GitLabPullModal: FC<GitLabPullModalProps> = ({ onClose }) => {
         dataToImport = { ...parsedV5, collection: filteredCollection };
       }
 
-      // Если режим слияния — пробуем сопоставить ID по именам, чтобы не плодить дубликаты папок
+      // Фильтруем окружения по выбранным переменным
+      const allEnvIds = collectAllIds(envTree);
+      if (selectedEnvIds.size === 0) {
+        // Ничего не выбрано — убираем все окружения
+        dataToImport = { ...dataToImport, environments: undefined };
+      } else if (selectedEnvIds.size < allEnvIds.size) {
+        // Частичный выбор — фильтруем переменные
+        dataToImport = filterV5EnvironmentsBySelection(dataToImport, selectedEnvIds);
+      }
+
+      // Пробуем сопоставить ID по именам, чтобы не плодить дубликаты папок и окружений
       if (importMode === 'merge') {
         const workspace = await services.workspace.getById(workspaceId);
         if (workspace) {
@@ -153,17 +173,9 @@ export const GitLabPullModal: FC<GitLabPullModalProps> = ({ onClose }) => {
 
       // Режим перезаписи
       if (importMode === 'overwrite') {
-        // Очищаем workspace: удаляем все запросы и папки
         const workspace = await services.workspace.getById(workspaceId);
         if (workspace) {
-          const descendants = await db.getWithDescendants(workspace, [
-            models.request.type,
-            models.requestGroup.type,
-            models.grpcRequest.type,
-            models.webSocketRequest.type,
-            models.socketIORequest.type,
-          ]);
-
+          const descendants = await db.getWithDescendants(workspace);
           const toRemove = descendants.filter(d => d._id !== workspaceId);
           const bufferId = await db.bufferChanges();
           for (const doc of toRemove) {
@@ -214,7 +226,7 @@ export const GitLabPullModal: FC<GitLabPullModalProps> = ({ onClose }) => {
     } finally {
       setPulling(false);
     }
-  }, [parsedV5, config, selectedIds, tree, importMode, workspaceId]);
+  }, [parsedV5, config, selectedIds, tree, selectedEnvIds, envTree, importMode, workspaceId]);
 
   return (
     <ModalOverlay
@@ -225,7 +237,7 @@ export const GitLabPullModal: FC<GitLabPullModalProps> = ({ onClose }) => {
     >
       <Modal
         onOpenChange={isOpen => !isOpen && onClose()}
-        className="max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-md border border-solid border-(--hl-sm) bg-(--color-bg) p-(--padding-lg) text-(--color-font)"
+        className="max-h-[85vh] w-full max-w-4xl overflow-y-auto rounded-md border border-solid border-(--hl-sm) bg-(--color-bg) p-(--padding-lg) text-(--color-font)"
       >
         <Dialog className="outline-hidden">
           {({ close }) => (
@@ -285,18 +297,39 @@ export const GitLabPullModal: FC<GitLabPullModalProps> = ({ onClose }) => {
                     <span>Файл: <strong className="text-(--color-font)">{config?.configFileName || 'insomnia-sync.yaml'}</strong></span>
                   </div>
 
-                  {/* Tree (только если уже загружено) */}
+                  {/* Двухпанельный лейаут: Запросы + Окружения */}
                   {tree.length > 0 && (
                     <>
-                      <div>
-                        <Label className="mb-1 block text-xs font-medium text-(--hl)">
-                          Содержимое удалённого файла
-                        </Label>
-                        <TreeSelector
-                          data={tree}
-                          selectedIds={selectedIds}
-                          onSelectionChange={setSelectedIds}
-                        />
+                      <div className="flex gap-4">
+                        {/* Левая панель — Запросы */}
+                        <div className="flex-1 min-w-0">
+                          <Label className="mb-1 block text-xs font-bold text-(--hl) uppercase">
+                            📋 Запросы
+                          </Label>
+                          <TreeSelector
+                            data={tree}
+                            selectedIds={selectedIds}
+                            onSelectionChange={setSelectedIds}
+                          />
+                        </div>
+
+                        {/* Правая панель — Окружения */}
+                        <div className="flex-1 min-w-0">
+                          <Label className="mb-1 block text-xs font-bold text-(--hl) uppercase">
+                            🔧 Переменные окружения
+                          </Label>
+                          {envTree.length > 0 ? (
+                            <TreeSelector
+                              data={envTree}
+                              selectedIds={selectedEnvIds}
+                              onSelectionChange={setSelectedEnvIds}
+                            />
+                          ) : (
+                            <div className="rounded-md border border-dashed border-(--hl-md) px-4 py-8 text-center text-sm text-(--hl)">
+                              Нет окружений в файле
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       {/* Import mode */}
